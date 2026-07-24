@@ -3,6 +3,7 @@ set -e
 
 # 第三方预编译包下载
 # 下载到 /home/build/immortalwrt/packages/ 目录
+# ImageBuilder 会自动优先使用本地 packages/ 中的包
 
 CUSTOM_PACKAGES=""
 
@@ -18,33 +19,41 @@ if wget -qO /tmp/mosdns.tar.gz "$MOSDNS_URL"; then
     CUSTOM_PACKAGES="$CUSTOM_PACKAGES mosdns luci-app-mosdns luci-i18n-mosdns-zh-cn v2dat v2ray-geoip v2ray-geosite"
   fi
 else
-  echo "⚠️ mosdns 下载失败"
+  echo "⚠️ mosdns 下载失败，将使用官方仓库版"
 fi
 
 # ============= QiuSimons daed =============
 echo "🔄 下载 QiuSimons daed..."
-DAED_TAG=$(curl -s https://api.github.com/repos/QiuSimons/luci-app-daed/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
+# 获取最新 release 的 tag_name
+DAED_DATA=$(curl -sf https://api.github.com/repos/QiuSimons/luci-app-daed/releases/latest)
+DAED_TAG=$(echo "$DAED_DATA" | grep '"tag_name"' | cut -d'"' -f4)
 if [ -n "$DAED_TAG" ]; then
-  DAED_BASE="https://github.com/QiuSimons/luci-app-daed/releases/download/$DAED_TAG"
-  for pkg in daed luci-app-daed luci-i18n-daed-zh-cn; do
-    # 尝试匹配 .apk 文件（文件名格式不固定，用通配符匹配）
-    PKG_URL=$(curl -s "https://api.github.com/repos/QiuSimons/luci-app-daed/releases/latest" | grep -o "https://[^\"]*${pkg}[^\"]*\.apk" | head -1)
-    if [ -n "$PKG_URL" ]; then
-      wget -q "$PKG_URL" -P /home/build/immortalwrt/packages/ && echo "✅ $pkg 已下载" || echo "⚠️ $pkg 下载失败"
-    fi
+  # 从 assets 中匹配 x86_64 + openwrt-25.12 的 apk
+  echo "$DAED_DATA" | grep -o "https://[^\"]*x86_64-openwrt-25\.12\.apk" | while read url; do
+    wget -q "$url" -P /home/build/immortalwrt/packages/ && echo "  ✅ $(basename $url) 已下载" || echo "  ⚠️ $(basename $url) 下载失败"
+  done
+  # 也下载 luci-app-daed（不区分架构的）
+  echo "$DAED_DATA" | grep -o "https://[^\"]*luci-app-daed[^\"]*openwrt-25\.12\.apk" | while read url; do
+    wget -q "$url" -P /home/build/immortalwrt/packages/ && echo "  ✅ $(basename $url) 已下载" || echo "  ⚠️ $(basename $url) 下载失败"
+  done
+  # 下载中文翻译包
+  echo "$DAED_DATA" | grep -o "https://[^\"]*luci-i18n-daed[^\"]*openwrt-25\.12\.apk" | while read url; do
+    wget -q "$url" -P /home/build/immortalwrt/packages/ && echo "  ✅ $(basename $url) 已下载" || echo "  ⚠️ $(basename $url) 下载失败"
   done
   CUSTOM_PACKAGES="$CUSTOM_PACKAGES daed luci-app-daed luci-i18n-daed-zh-cn"
 else
-  echo "⚠️ daed 版本获取失败"
+  echo "⚠️ daed 版本获取失败，将使用官方仓库版"
 fi
 
 # ============= vernesong OpenClash =============
 echo "🔄 下载 OpenClash..."
-OC_RELEASE_URL=$(curl -s https://api.github.com/repos/vernesong/OpenClash/releases/latest | grep "browser_download_url.*\.apk" | head -1 | cut -d '"' -f 4)
-if [ -n "$OC_RELEASE_URL" ]; then
-  wget -q "$OC_RELEASE_URL" -P /home/build/immortalwrt/packages/ && echo "✅ OpenClash 已下载" || echo "⚠️ OpenClash 下载失败"
+OC_DATA=$(curl -sf https://api.github.com/repos/vernesong/OpenClash/releases/latest)
+OC_APK_URL=$(echo "$OC_DATA" | grep "browser_download_url.*\.apk" | head -1 | cut -d '"' -f 4)
+if [ -n "$OC_APK_URL" ]; then
+  wget -q "$OC_APK_URL" -P /home/build/immortalwrt/packages/ && echo "✅ OpenClash 已下载" || echo "⚠️ OpenClash 下载失败"
   CUSTOM_PACKAGES="$CUSTOM_PACKAGES luci-app-openclash"
 fi
+# OpenClash clash_meta 内核由 build.sh 处理
 
 # ============= 导出包列表 =============
 echo "CUSTOM_PACKAGES=$CUSTOM_PACKAGES"

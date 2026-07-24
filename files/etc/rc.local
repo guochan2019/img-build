@@ -1,0 +1,9 @@
+#!/bin/sh /etc/rc.common
+
+# Nikki v2ray 数据目录软链接
+# 由 img-build 自动生成
+if [ -d /usr/share/v2ray ] && [ -d /etc/nikki ]; then
+  ln -sf /usr/share/v2ray/*.* /etc/nikki/run/
+fi
+
+exit 0
