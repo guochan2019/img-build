@@ -48,5 +48,5 @@ jobs:
         with:
           tag_name: ImmortalWrt-ImageBuilder
           files: |
-            ${{ github.workspace }}/bin/targets/x86/64/*squashfs-combined-efi.img.gz
+            ${{ github.workspace }}/bin/targets/x86/64/*squashfs-combined-efi*
           token: ${{ secrets.GITHUB_TOKEN }}
