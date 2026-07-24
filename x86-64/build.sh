@@ -9,9 +9,18 @@ set -e
 LOGFILE="/tmp/img-build-log.txt"
 echo "Starting img-build at $(date)" > $LOGFILE
 
-# ============= 1. 第三方预编译包下载 =============
-source shell/apk-custom-packages.sh
-# 执行后 CUSTOM_PACKAGES 变量已包含所有第三方包名
+# ============= 1. 注册本地包仓库（修复 apk 相对路径 bug）=============
+# OpenWrt Issue #18032: apk-tools 新版不支持 repositories.conf 的相对路径
+# 手动构建索引并注册
+echo "🔄 注册本地包仓库..." >> $LOGFILE
+cd /home/build/immortalwrt/packages
+apk index -o packages.adb *.apk --rewrite 2>/dev/null || true
+# 将本地仓库加入 repositories.conf（使用绝对路径）
+if ! grep -q "file:///home/build/immortalwrt/packages" /home/build/immortalwrt/repositories.conf 2>/dev/null; then
+  echo "src file:packages file:///home/build/immortalwrt/packages" >> /home/build/immortalwrt/repositories.conf
+  echo "✅ 本地包仓库已注册" >> $LOGFILE
+fi
+cd /home/build/immortalwrt
 
 # ============= vmlinux-btf 占位包 =============
 # QiuSimons daed 声明依赖 vmlinux-btf，但 ImmortalWrt 25.12
