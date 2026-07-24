@@ -11,8 +11,13 @@ echo "Starting img-build at $(date)" > $LOGFILE
 
 # ============= 1. 注册本地包仓库（修复 apk 相对路径 bug）=============
 # OpenWrt Issue #18032: apk-tools 新版不支持 repositories.conf 的相对路径
-# 手动构建索引并注册
 echo "🔄 注册本地包仓库..." >> $LOGFILE
+
+# 先下载第三方预编译包到 packages/
+source shell/apk-custom-packages.sh
+CUSTOM_PACKAGES="$CUSTOM_PACKAGES mosdns luci-app-mosdns luci-i18n-mosdns-zh-cn v2dat v2ray-geoip v2ray-geosite daed luci-app-daed luci-i18n-daed-zh-cn luci-app-openclash"
+
+# 构建本地包索引
 cd /home/build/immortalwrt/packages
 apk index -o packages.adb *.apk --rewrite 2>/dev/null || true
 # 将本地仓库加入 repositories.conf（使用绝对路径）
