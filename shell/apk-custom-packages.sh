@@ -8,6 +8,9 @@ set -e
 
 CUSTOM_PACKAGES=""
 
+# 确保 packages 目录存在
+mkdir -p /home/build/immortalwrt/packages
+
 # ============= sbwml mosdns（含 v2ray-geodata）=============
 echo "🔄 下载 sbwml mosdns..."
 MOSDNS_URL="https://github.com/sbwml/luci-app-mosdns/releases/latest/download/x86_64-openwrt-25.12.tar.gz"
@@ -16,7 +19,7 @@ if wget -qO /tmp/mosdns.tar.gz "$MOSDNS_URL"; then
   tar -zxf /tmp/mosdns.tar.gz -C /tmp/mosdns-pkgs/
   if [ -d /tmp/mosdns-pkgs/packages_ci ]; then
     # 复制所有包（mosdns + luci-app-mosdns + v2ray-geoip + v2ray-geosite + v2dat）
-    cp /tmp/mosdns-pkgs/packages_ci/*.apk /home/build/immortalwrt/packages/ 2>/dev/null || true
+    cp /tmp/mosdns-pkgs/packages_ci/*.apk /home/build/immortalwrt/packages/
     echo "✅ mosdns 预编译包已复制"
     CUSTOM_PACKAGES="$CUSTOM_PACKAGES mosdns luci-app-mosdns luci-i18n-mosdns-zh-cn v2dat v2ray-geoip v2ray-geosite"
   fi
