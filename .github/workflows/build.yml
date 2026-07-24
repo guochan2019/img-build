@@ -10,6 +10,12 @@ on:
         type: choice
         options:
           - '25.12'
+      pppoe_account:
+        description: 'PPPoE 宽带账号'
+        required: false
+      pppoe_password:
+        description: 'PPPoE 宽带密码'
+        required: false
 
 permissions:
   contents: write
@@ -24,19 +30,17 @@ jobs:
       - name: Set permissions
         run: chmod -R +x shell/ x86-64/
 
-      - name: Download third-party packages
-        run: bash shell/download-packages.sh
-
       - name: Build via ImageBuilder
         run: |
+          luci_version="${{ github.event.inputs.luci_version }}"
           docker run --rm -i \
             --user root \
             -v "${{ github.workspace }}/bin:/home/build/immortalwrt/bin" \
             -v "${{ github.workspace }}/files:/home/build/immortalwrt/files" \
             -v "${{ github.workspace }}/x86-64/imm25.config:/home/build/immortalwrt/.config" \
-            -v "${{ github.workspace }}/packages:/home/build/immortalwrt/packages" \
+            -v "${{ github.workspace }}/shell:/home/build/immortalwrt/shell" \
             -v "${{ github.workspace }}/x86-64/build.sh:/home/build/immortalwrt/build.sh" \
-            immortalwrt/imagebuilder:x86-64-openwrt-25.12 \
+            immortalwrt/imagebuilder:x86-64-openwrt-${luci_version} \
             /bin/bash /home/build/immortalwrt/build.sh
 
       - name: Upload firmware
