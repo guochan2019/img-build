@@ -21,6 +21,8 @@ if curl -fsSL --connect-timeout 10 -o /tmp/mosdns.tar.gz "$MOSDNS_URL"; then
     # 复制所有包（mosdns + luci-app-mosdns + v2ray-geoip + v2ray-geosite + v2dat）
     cp /tmp/mosdns-pkgs/packages_ci/*.apk /home/build/immortalwrt/packages/
     echo "✅ mosdns 预编译包已复制"
+    echo "  📦 packages/ 内容:" >> $LOGFILE
+    ls -la /home/build/immortalwrt/packages/*.apk >> $LOGFILE 2>&1
     CUSTOM_PACKAGES="$CUSTOM_PACKAGES mosdns luci-app-mosdns luci-i18n-mosdns-zh-cn v2dat v2ray-geoip v2ray-geosite"
   else
     echo "⚠️ mosdns 压缩包中没有 packages_ci 目录"
