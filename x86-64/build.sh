@@ -41,7 +41,32 @@ PKGINFO
 tar -czf /home/build/immortalwrt/packages/vmlinux-btf-1.0.0.apk \
   -C /tmp/vmlinux-btf-pkg . 2>/dev/null && echo "✅ vmlinux-btf 占位包已创建" >> $LOGFILE
 
-# ============= 2. frpc 翻译处理 =============
+# ============= 2. 生成 .config（默认配置 + 自定义）=============
+# ImageBuilder 内置有完整 .config，在其基础上追加自定义选项
+echo "🔄 配置内核选项..." >> $LOGFILE
+
+# 启用 BTF/eBPF（daed 需要）
+echo "CONFIG_KERNEL_DEBUG_INFO=y" >> .config
+echo "CONFIG_KERNEL_DEBUG_INFO_BTF=y" >> .config
+echo "CONFIG_KERNEL_DEBUG_INFO_BTF_MODULES=y" >> .config
+echo "CONFIG_KERNEL_BPF_EVENTS=y" >> .config
+echo "CONFIG_KERNEL_CGROUP_BPF=y" >> .config
+echo "CONFIG_BPF_TOOLCHAIN_HOST=y" >> .config
+
+# 固件大小
+echo "CONFIG_TARGET_ROOTFS_PARTSIZE=256" >> .config
+
+# 镜像格式控制
+sed -i \
+  -e 's/^CONFIG_TARGET_ROOTFS_EXT4FS=y/# CONFIG_TARGET_ROOTFS_EXT4FS is not set/' \
+  -e 's/^CONFIG_TARGET_ROOTFS_TARGZ=y/# CONFIG_TARGET_ROOTFS_TARGZ is not set/' \
+  -e 's/^CONFIG_ISO_IMAGES=y/# CONFIG_ISO_IMAGES is not set/' \
+  -e 's/^CONFIG_VDI_IMAGES=y/# CONFIG_VDI_IMAGES is not set/' \
+  -e 's/^CONFIG_VHDX_IMAGES=y/# CONFIG_VHDX_IMAGES is not set/' \
+  -e 's/^CONFIG_GRUB_IMAGES=y/# CONFIG_GRUB_IMAGES is not set/' \
+  .config 2>/dev/null || true
+
+echo "✅ 自定义选项已应用" >> $LOGFILE
 # ImageBuilder 预编译包中的翻译是 .lmo 二进制，需下载源码编译覆盖
 echo "🔄 处理 frpc 翻译..." >> $LOGFILE
 if command -v po2lmo &>/dev/null; then
