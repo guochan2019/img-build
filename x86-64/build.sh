@@ -13,6 +13,25 @@ echo "Starting img-build at $(date)" > $LOGFILE
 source shell/apk-custom-packages.sh
 # 执行后 CUSTOM_PACKAGES 变量已包含所有第三方包名
 
+# ============= vmlinux-btf 占位包 =============
+# QiuSimons daed 声明依赖 vmlinux-btf，但 ImmortalWrt 25.12
+# 内核已内置 BTF（/sys/kernel/btf/vmlinux），不需要独立包。
+# 创建一个空 apk 占位包来满足依赖校验。
+echo "🔄 创建 vmlinux-btf 占位包..." >> $LOGFILE
+mkdir -p /tmp/vmlinux-btf-pkg
+cat > /tmp/vmlinux-btf-pkg/.PKGINFO << 'PKGINFO'
+pkgname = vmlinux-btf
+pkgver = 1.0.0
+pkgdesc = "Dummy package - BTF is built into 25.12 kernel"
+url = ""
+packager = "img-build"
+size = 0
+architecture = all
+license = "GPL-2.0-only"
+PKGINFO
+tar -czf /home/build/immortalwrt/packages/vmlinux-btf-1.0.0.apk \
+  -C /tmp/vmlinux-btf-pkg . 2>/dev/null && echo "✅ vmlinux-btf 占位包已创建" >> $LOGFILE
+
 # ============= 2. frpc 翻译处理 =============
 # ImageBuilder 预编译包中的翻译是 .lmo 二进制，需下载源码编译覆盖
 echo "🔄 处理 frpc 翻译..." >> $LOGFILE
