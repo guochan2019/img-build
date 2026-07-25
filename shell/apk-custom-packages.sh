@@ -53,14 +53,14 @@ if [ -z "$DAED_TAG" ]; then
 fi
 
 DAED_BASE="https://github.com/QiuSimons/luci-app-daed/releases/download/$DAED_TAG"
-# 从 release 页 HTML 提取 x86_64 的 apk 下载地址（完全不走 API）
-DAED_FILES_RAW=$(curl -sL "https://github.com/QiuSimons/luci-app-daed/releases/tag/$DAED_TAG" 2>/dev/null | \
-  grep -o "/download/$DAED_TAG/[^\"]*x86_64-openwrt-25\\.12\\.apk" | \
-  sed "s|/download/$DAED_TAG/||" | sort -u || true)
+# 从 expanded_assets 静态页提取 x86_64 apk 文件名（不渲染 JS）
+DAED_FILES_RAW=$(curl -sL "https://github.com/QiuSimons/luci-app-daed/releases/expanded_assets/$DAED_TAG" 2>/dev/null | \
+  grep -o "href=\"[^\"]*download/$DAED_TAG/[^\"]*x86_64-openwrt-25\\.12\\.apk\"" | \
+  sed "s|.*download/$DAED_TAG/||;s|\"||" | sort -u || true)
 
 all_ok=true
 if [ -z "$DAED_FILES_RAW" ]; then
-  echo "  ⚠️ 无法从 release 页提取文件名，使用 API 兜底"
+  echo "  ⚠️ expanded_assets 获取失败，使用 API 兜底"
   DAED_FILES_RAW=$(curl -sf "https://api.github.com/repos/QiuSimons/luci-app-daed/releases/tags/$DAED_TAG" 2>/dev/null | \
     grep -o '"name":"[^"]*x86_64-openwrt-25\\.12\\.apk"' | cut -d'"' -f4 || true)
 fi
