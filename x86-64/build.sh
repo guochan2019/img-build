@@ -16,15 +16,10 @@ mkdir -p /home/build/immortalwrt/packages
 echo "🔄 下载第三方预编译包..." 
 source shell/apk-custom-packages.sh
 
-# ============= 3. 安装预编译包到 ImageBuilder 包目录 =============
-echo "🔄 安装预编译包..."
-LOCAL_PKG_DIR="/home/build/immortalwrt/bin/packages/x86_64/packages"
-mkdir -p "$LOCAL_PKG_DIR"
-cp /home/build/immortalwrt/packages/*.apk "$LOCAL_PKG_DIR/" 2>/dev/null
-cd "$LOCAL_PKG_DIR"
-apk index -o APKINDEX.tar.gz *.apk 2>/dev/null || true
-cd /home/build/immortalwrt
-echo "  $(ls $LOCAL_PKG_DIR/*.apk 2>/dev/null | wc -l) 个 .apk 已安装"
+# ============= 3. packages/ 检查 =============
+# .apk 已由 apk-custom-packages.sh 下载到 packages/
+# 不创建自定义索引，ImageBuilder 自动处理
+echo "  packages/: $(ls /home/build/immortalwrt/packages/*.apk 2>/dev/null | wc -l) 个 .apk"
 
 # ============= 4. frpc 翻译处理（feed-builder 已编译 patched .lmo）=============
 # frpc 的 .po 已在 feed-builder 编译前 patched: 'frp 客户端' → 'Frp 客户端'
