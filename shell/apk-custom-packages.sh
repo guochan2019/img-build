@@ -47,15 +47,8 @@ except: pass
 " 2>/dev/null || true)
 
 if [ -z "$DAED_URLS" ]; then
-  # API 限流，用 HTTP redirect 获取最新 tag，结合硬编码文件名
-  DAED_TAG=$(curl -sL -o /dev/null -w '%{url_effective}' \
-    "https://github.com/QiuSimons/luci-app-daed/releases/latest" 2>/dev/null | \
-    grep -o 'tag/[^/]*$' | cut -d/ -f2 || true)
-  if [ -z "$DAED_TAG" ]; then
-    # redirect 也失败，用完全硬编码兜底
-    DAED_TAG="daed_2026.07.17-r1"
-  fi
-  echo "  ⚠️ API 限流，使用 redirect 获取 tag: $DAED_TAG"
+  # API 限流，硬编码 tag 和文件
+  DAED_TAG="daed_2026.07.17-r1"
   DAED_URLS="https://github.com/QiuSimons/luci-app-daed/releases/download/$DAED_TAG/daed-2026.07.17-r1-x86_64-openwrt-25.12.apk
 https://github.com/QiuSimons/luci-app-daed/releases/download/$DAED_TAG/luci-app-daed-1.4-r1-openwrt-25.12.apk
 https://github.com/QiuSimons/luci-app-daed/releases/download/$DAED_TAG/luci-i18n-daed-zh-cn-25.283.11553.bce4b5f-openwrt-25.12.apk"
