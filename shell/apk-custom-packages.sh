@@ -53,17 +53,20 @@ if [ -z "$DAED_TAG" ]; then
 fi
 
 DAED_BASE="https://github.com/QiuSimons/luci-app-daed/releases/download/$DAED_TAG"
-# 从 API 获取实际文件名列表（限流时从已知列表推断）
-DAED_FILES_RAW=$(curl -sf "https://api.github.com/repos/QiuSimons/luci-app-daed/releases/tags/$DAED_TAG" 2>/dev/null | \
-  grep -o '"name":"[^"]*x86_64-openwrt-25\.12\.apk"' | cut -d'"' -f4 || true)
+# 从 release 页 HTML 提取 x86_64 的 apk 下载地址（完全不走 API）
+DAED_FILES_RAW=$(curl -sL "https://github.com/QiuSimons/luci-app-daed/releases/tag/$DAED_TAG" 2>/dev/null | \
+  grep -o "/download/$DAED_TAG/[^\"]*x86_64-openwrt-25\\.12\\.apk" | \
+  sed "s|/download/$DAED_TAG/||" | sort -u || true)
 
 all_ok=true
 if [ -z "$DAED_FILES_RAW" ]; then
-  # 兜底文件列表
-  echo "  ⚠️ API 获取文件列表失败，使用已知文件名兜底"
-  DAED_FILES_RAW="daed-2026.07.17-r1-x86_64-openwrt-25.12.apk
-luci-app-daed-1.4-r1-openwrt-25.12.apk
-luci-i18n-daed-zh-cn-25.283.11553.bce4b5f-openwrt-25.12.apk"
+  echo "  ⚠️ 无法从 release 页提取文件名，使用 API 兜底"
+  DAED_FILES_RAW=$(curl -sf "https://api.github.com/repos/QiuSimons/luci-app-daed/releases/tags/$DAED_TAG" 2>/dev/null | \
+    grep -o '"name":"[^"]*x86_64-openwrt-25\\.12\\.apk"' | cut -d'"' -f4 || true)
+fi
+if [ -z "$DAED_FILES_RAW" ]; then
+  echo "  ⚠️ 所有获取方式失败，跳过 daed 下载"
+  all_ok=false
 fi
 
 while IFS= read -r fname; do
