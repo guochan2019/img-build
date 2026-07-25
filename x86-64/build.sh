@@ -9,22 +9,8 @@ set -e
 LOGFILE="/tmp/img-build-log.txt"
 echo "Starting img-build at $(date)" > $LOGFILE
 
-# ============= 1. 创建 vmlinux-btf 占位包（daed 依赖它）=============
-# .PKGINFO 必须用 apk v3 格式（key = value），不能有逗号
-mkdir -p /tmp/vmlinux-btf-pkg
-cat > /tmp/vmlinux-btf-pkg/.PKGINFO << 'PKGINFO'
-pkgname = vmlinux-btf
-pkgver = 1.0.0
-pkgdesc = Dummy package for BTF kernel support
-url = 
-packager = img-build
-size = 0
-architecture = x86_64
-license = GPL-2.0-only
-PKGINFO
+# ============= 1. 确保 packages/ 目录存在 =============
 mkdir -p /home/build/immortalwrt/packages
-tar -czf /home/build/immortalwrt/packages/vmlinux-btf-1.0.0.apk -C /tmp/vmlinux-btf-pkg .
-echo "  vmlinux-btf 占位包已创建"
 
 # ============= 2. 第三方预编译包下载 =============
 echo "🔄 下载第三方预编译包..." 
