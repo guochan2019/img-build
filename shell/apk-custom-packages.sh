@@ -41,9 +41,7 @@ DAED_BASE_URL="https://github.com/QiuSimons/luci-app-daed/releases/download/$DAE
 DAED_FILES="daed-2026.07.17-r1-x86_64-openwrt-25.12.apk luci-app-daed-1.4-r1-openwrt-25.12.apk luci-i18n-daed-zh-cn-25.283.11553.bce4b5f-openwrt-25.12.apk"
 all_ok=true
 for f in $DAED_FILES; do
-  # 下载后重命名：去掉架构后缀使文件名匹配 mkndx 索引格式
-  target_name=$(echo "$f" | sed 's/-x86_64-openwrt-25\.12//')
-  curl -fsSL --connect-timeout 10 -o "/home/build/immortalwrt/packages/$target_name" "$DAED_BASE_URL/$f" && \
+  curl -fsSL --connect-timeout 10 -o "/home/build/immortalwrt/packages/$f" "$DAED_BASE_URL/$f" && \
     echo "  ✅ $f 已下载" || { echo "  ⚠️ $f 下载失败"; all_ok=false; }
 done
 if [ "$all_ok" = true ]; then
