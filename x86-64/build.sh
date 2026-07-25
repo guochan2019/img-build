@@ -26,6 +26,8 @@ if [ -n "$APK_BIN" ]; then
   cd /home/build/immortalwrt/packages
   $APK_BIN mkndx --allow-untrusted --output packages.adb *.apk 2>&1 && \
     echo "  ✅ 索引已创建 ($(wc -c < packages.adb) bytes)" || echo "  ⚠️ mkndx 失败"
+  # 设为只读，阻止 make image 内部 mkndx 覆盖（签名失败会截断文件）
+  chmod a-w packages.adb 2>/dev/null
   cd /home/build/immortalwrt
 fi
 echo "  packages/ 就绪: $(ls /home/build/immortalwrt/packages/*.apk 2>/dev/null | wc -l) 个 .apk"
