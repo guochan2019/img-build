@@ -39,7 +39,7 @@ done <<< "$FB_APKS"
 echo "  ✅ feed-builder 包已下载 ($dl_count 个 .apk)"
 # 所有 feed-builder 编译的包
 CUSTOM_PACKAGES="$CUSTOM_PACKAGES nikki luci-app-nikki luci-i18n-nikki-zh-cn"
-CUSTOM_PACKAGES="$CUSTOM_PACKAGES mihomo-meta mihomo-alpha"
+CUSTOM_PACKAGES="$CUSTOM_PACKAGES mihomo-meta"
 CUSTOM_PACKAGES="$CUSTOM_PACKAGES momo luci-app-momo luci-i18n-momo-zh-cn"
 CUSTOM_PACKAGES="$CUSTOM_PACKAGES lucky luci-app-lucky luci-i18n-lucky-zh-cn"
 CUSTOM_PACKAGES="$CUSTOM_PACKAGES quickfile luci-app-quickfile luci-i18n-quickfile-zh-cn"
