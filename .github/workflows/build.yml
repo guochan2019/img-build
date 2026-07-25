@@ -11,7 +11,7 @@ on:
         options:
           - '25.12.1'
       custom_router_ip:
-        description: '路由器管理地址（仅对多网口生效）'
+        description: '路由器管理地址'
         required: true
         default: '192.168.50.2'
       profile:
