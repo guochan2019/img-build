@@ -140,6 +140,9 @@ if echo "$PACKAGES" | grep -q "luci-app-openclash"; then
   fi
 fi
 
+# 跳过本地仓库签名验证（第三方包无可信签名）
+export APK_NO_SIGNATURE_CHECK=1
+
 # ============= 8. 构建镜像 =============
 echo "📦 开始构建固件..."
 echo "Packages: $PACKAGES"
