@@ -16,16 +16,23 @@ mkdir -p /home/build/immortalwrt/packages
 echo "🔄 下载第三方预编译包..." 
 source shell/apk-custom-packages.sh
 
-# ============= 3. 本地包入 ImageBuilder 包目录 =============
-# 把预编译包放入 ImageBuilder 的包目录，自动参与依赖解析
-echo "🔄 安装本地预编译包..."
-LOCAL_PKG_DIR="/home/build/immortalwrt/bin/packages/x86_64/packages"
-mkdir -p "$LOCAL_PKG_DIR"
-cp /home/build/immortalwrt/packages/*.apk "$LOCAL_PKG_DIR/" 2>/dev/null
-# 重新生成包索引
-cd "$LOCAL_PKG_DIR"
-apk mkndx --allow-untrusted --output APKINDEX.tar.gz *.apk 2>&1 || echo "  ⚠️ 索引生成失败"
-cd /home/build/immortalwrt
+# ============= 3. 创建本地包索引 + 设置优先级 =============
+# 本地 packages/ 优先级必须高于官方 repos，否则 apk 会选官方同名包
+echo "🔄 创建本地包索引..."
+APK_BIN=$(find /home/build/immortalwrt/staging_dir/host/bin -name apk -type f 2>/dev/null | head -1)
+if [ -n "$APK_BIN" ]; then
+  cd /home/build/immortalwrt/packages
+  $APK_BIN mkndx --allow-untrusted --output packages.adb *.apk 2>&1 && \
+    echo "  ✅ 索引已创建 ($(wc -c < packages.adb) bytes)" || echo "  ⚠️ mkndx 失败"
+  chmod a-w packages.adb 2>/dev/null
+  cd /home/build/immortalwrt
+fi
+# 把本地 packages/ 源插入 repositories.conf 最前面
+# apk 按文件顺序解析源，第一个匹配的源优先
+if [ -f /home/build/immortalwrt/repositories.conf ]; then
+  sed -i '1i src file:packages file:///home/build/immortalwrt/packages' \
+    /home/build/immortalwrt/repositories.conf 2>/dev/null || true
+fi
 echo "  packages/ 就绪: $(ls /home/build/immortalwrt/packages/*.apk 2>/dev/null | wc -l) 个 .apk"
 
 # ============= 4. frpc 翻译处理（feed-builder 已编译 patched .lmo）=============
