@@ -16,25 +16,14 @@ mkdir -p /home/build/immortalwrt/packages
 echo "🔄 下载第三方预编译包..." 
 source shell/apk-custom-packages.sh
 
-# ============= 3. 创建签名本地包索引 =============
-# 先触发 make _check_keys 生成签名密钥，再用密钥签名索引
-echo "🔄 创建签名本地包索引..."
-make _check_keys 2>/dev/null || echo "  ⚠️ _check_keys 未执行（可能已有密钥）"
+# ============= 3. 创建本地包索引（无签名 + chmod a-w 防覆盖）=============
+# chmod a-w 阻止 make image 内部 mkndx 覆盖索引
+echo "🔄 创建本地包索引..."
 APK_BIN=$(find /home/build/immortalwrt/staging_dir/host/bin -name apk -type f 2>/dev/null | head -1)
 if [ -n "$APK_BIN" ]; then
   cd /home/build/immortalwrt/packages
-  if [ -f /home/build/immortalwrt/keys/local-private-key.pem ]; then
-    $APK_BIN mkndx \
-      --keys-dir /home/build/immortalwrt/keys \
-      --sign /home/build/immortalwrt/keys/local-private-key.pem \
-      --allow-untrusted \
-      --output packages.adb *.apk 2>&1 && \
-      echo "  ✅ 签名索引已创建 ($(wc -c < packages.adb) bytes)" || echo "  ⚠️ mkndx 失败"
-  else
-    $APK_BIN mkndx --allow-untrusted --output packages.adb *.apk 2>&1 && \
-      echo "  ✅ 无签名索引已创建 ($(wc -c < packages.adb) bytes)" || echo "  ⚠️ mkndx 失败"
-  fi
-  # 设为只读，阻止 make image 内部 mkndx 覆盖
+  $APK_BIN mkndx --allow-untrusted --output packages.adb *.apk 2>&1 && \
+    echo "  ✅ 索引已创建 ($(wc -c < packages.adb) bytes)" || echo "  ⚠️ mkndx 失败"
   chmod a-w packages.adb 2>/dev/null
   cd /home/build/immortalwrt
 fi
