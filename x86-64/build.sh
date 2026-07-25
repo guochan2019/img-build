@@ -3,7 +3,7 @@ set -e
 
 # =============================================================
 # build.sh — 在 ImmortalWrt ImageBuilder Docker 内执行
-# 下载第三方预编译包 → 版本追踪 → 组装固件
+# 下载第三方预编译包 → 翻译/版本追踪 → 组装固件
 # =============================================================
 
 LOGFILE="/tmp/img-build-log.txt"
@@ -55,7 +55,7 @@ else
   echo "  ⚠️ Tailscale 版本查询失败，使用官方仓库版本"
 fi
 
-# ============= 5. 从 .config 提取所有包 =============
+# ============= 6. 从 .config 提取所有包 =============
 # 过滤配置项别名和第三方 feed 包（不在官方仓库也不在本地 packages/ 的）
 echo "🔄 从 .config 提取包列表..."
 PACKAGES=""
@@ -85,7 +85,7 @@ PACKAGES="$PACKAGES $CUSTOM_PACKAGES"
 PKG_COUNT=$(echo "$PACKAGES" | wc -w)
 echo "📦 共 $PKG_COUNT 个包"
 
-# ============= 6. 配置特殊包 =============
+# ============= 7. 配置特殊包 =============
 # OpenClash 内核
 if echo "$PACKAGES" | grep -q "luci-app-openclash"; then
   echo "🔄 下载 OpenClash 内核..."
@@ -99,7 +99,7 @@ if echo "$PACKAGES" | grep -q "luci-app-openclash"; then
   fi
 fi
 
-# ============= 7. 构建镜像 =============
+# ============= 8. 构建镜像 =============
 echo "📦 开始构建固件..."
 echo "Packages: $PACKAGES"
 make image PROFILE="generic" PACKAGES="$PACKAGES" \
