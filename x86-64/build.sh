@@ -80,10 +80,12 @@ fi
 
 # ============= 7. 构建镜像 =============
 echo "📦 开始构建固件..."
+ROOTFS_PARTSIZE=${ROOTFS_PARTSIZE:-512}
 echo "Packages: $PACKAGES"
+echo "ROOTFS_PARTSIZE: ${ROOTFS_PARTSIZE}M"
 make image PROFILE="generic" PACKAGES="$PACKAGES" \
   FILES="/home/build/immortalwrt/files" \
-  ROOTFS_PARTSIZE=256
+  ROOTFS_PARTSIZE=${ROOTFS_PARTSIZE}
 
 if [ $? -ne 0 ]; then
   echo "❌ 构建失败!" >> $LOGFILE

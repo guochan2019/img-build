@@ -5,13 +5,23 @@
 LOGFILE="/etc/config/img-build-log.txt"
 echo "Starting 99-custom.sh at $(date)" >> $LOGFILE
 
-# ============= 默认 IP 192.168.50.5 =============
-uci set network.lan.ipaddr='192.168.50.5'
+# ============= 默认 IP =============
+# 从 workflow 设置的 custom_router_ip.txt 读取
+CUSTOM_IP_FILE="/etc/config/custom_router_ip.txt"
+if [ -f "$CUSTOM_IP_FILE" ]; then
+  CUSTOM_IP=$(cat "$CUSTOM_IP_FILE" | head -1)
+  echo "📖 从 $CUSTOM_IP_FILE 读取 IP: $CUSTOM_IP" >> $LOGFILE
+else
+  CUSTOM_IP="192.168.50.2"
+  echo "⚠️ $CUSTOM_IP_FILE 不存在，使用默认 $CUSTOM_IP" >> $LOGFILE
+fi
+
+uci set network.lan.ipaddr="$CUSTOM_IP"
 uci set network.lan.netmask='255.255.255.0'
 uci set network.lan.gateway='192.168.50.1'
 uci set network.lan.dns='223.5.5.5 114.114.114.114'
 uci commit network
-echo "✅ 默认 IP 已设为 192.168.50.5" >> $LOGFILE
+echo "✅ IP 已设为 $CUSTOM_IP" >> $LOGFILE
 
 # ============= luci-app-quickfile nginx 配置 =============
 # 替换为指定配置
