@@ -32,6 +32,7 @@ if curl -fsSL --connect-timeout 10 -o /tmp/feed-builder.tar.gz "$FB_URL"; then
   CUSTOM_PACKAGES="$CUSTOM_PACKAGES mosdns luci-app-mosdns luci-i18n-mosdns-zh-cn v2dat"
   CUSTOM_PACKAGES="$CUSTOM_PACKAGES v2ray-geoip v2ray-geosite"
   CUSTOM_PACKAGES="$CUSTOM_PACKAGES luci-app-openclash"
+  CUSTOM_PACKAGES="$CUSTOM_PACKAGES luci-app-frpc luci-i18n-frpc-zh-cn"
   CUSTOM_PACKAGES="$CUSTOM_PACKAGES luci-theme-kucat"
 else
   echo "  ⚠️ feed-builder 下载失败，跳过自定义 feed 包"
