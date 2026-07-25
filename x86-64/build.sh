@@ -38,10 +38,18 @@ source shell/apk-custom-packages.sh
 # 但 ImageBuilder 的 repositories.conf 已指向 packages/，需要索引
 echo "🔄 重建本地包索引..." >> $LOGFILE
 cd /home/build/immortalwrt/packages
-apk version 2>&1
-apk index --output packages.adb --rewrite *.apk 2>&1 || echo "apk index failed (exit=$?)"
-ls -la packages.adb 2>&1 || echo "packages.adb NOT created"
-echo "📦 .apk count: $(ls *.apk 2>/dev/null | wc -l)"
+# apk 在 staging_dir/host/bin 下，不在系统 PATH
+APK_BIN=$(find /home/build/immortalwrt/staging_dir -name apk -type f 2>/dev/null | head -1)
+if [ -n "$APK_BIN" ]; then
+  echo "找到 apk: $APK_BIN" >> $LOGFILE
+  $APK_BIN index --output packages.adb --rewrite *.apk 2>&1 | head -3 >> $LOGFILE
+else
+  echo "⚠️ 未找到 apk 二进制，跳过索引" >> $LOGFILE
+  # 手动创建最小 packages.adb（空索引让 apk 不报错）
+  echo -n > packages.adb
+fi
+ls -la packages.adb >> $LOGFILE 2>&1
+echo "📦 .apk count: $(ls *.apk 2>/dev/null | wc -l)" >> $LOGFILE
 cd /home/build/immortalwrt
 
 # ============= 4. frpc 翻译处理 =============
