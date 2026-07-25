@@ -39,9 +39,22 @@ for d in /home/build/immortalwrt/staging_dir/host/bin /home/build/immortalwrt/st
 done
 if [ -n "$APK_BIN" ]; then
   echo "  找到 apk: $APK_BIN"
+  echo "  apk version: $($APK_BIN version 2>&1)"
   cd /home/build/immortalwrt/packages
-  $APK_BIN index --output packages.adb --rewrite *.apk 2>&1 || echo "  apk index 执行完毕（exit=$?）"
-  ls -la packages.adb
+  # 依次尝试不同语法
+  for cmd in \
+    "$APK_BIN index -o packages.adb --rewrite *.apk" \
+    "$APK_BIN index --output packages.adb *.apk" \
+    "$APK_BIN index -o packages.adb *.apk" \
+    "$APK_BIN mkndx -o packages.adb *.apk" \
+    "$APK_BIN mkndx --output packages.adb --rewrite *.apk"; do
+    echo "  尝试: $cmd"
+    if eval "$cmd" 2>&1; then
+      echo "  ✅ 成功!"
+      break
+    fi
+  done
+  ls -la packages.adb 2>/dev/null && echo "  packages.adb created" || echo "  packages.adb NOT created"
   echo "  .apk count: $(ls *.apk 2>/dev/null | wc -l)"
   cd /home/build/immortalwrt
 else
