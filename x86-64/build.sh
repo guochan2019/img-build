@@ -20,6 +20,10 @@ source shell/apk-custom-packages.sh
 # .apk 已由 apk-custom-packages.sh 下载到 packages/
 # 不创建自定义索引，ImageBuilder 自动处理
 echo "  packages/: $(ls /home/build/immortalwrt/packages/*.apk 2>/dev/null | wc -l) 个 .apk"
+# 本地源首行加 @local tag，apk v3 原生支持仓库标签（repository pinning）
+# PACKAGES 中用 daed@local 强制只从 tagged 源安装，完全跳过官方 repo
+sed -i '1i @local /home/build/immortalwrt/packages/packages.adb' \
+  /home/build/immortalwrt/repositories 2>/dev/null || true
 
 # ============= 4. frpc 翻译处理（feed-builder 已编译 patched .lmo）=============
 # frpc 的 .po 已在 feed-builder 编译前 patched: 'frp 客户端' → 'Frp 客户端'
@@ -49,6 +53,14 @@ done < <(grep '^CONFIG_PACKAGE_.*=y' /home/build/immortalwrt/.config)
 PACKAGES="$PACKAGES $CUSTOM_PACKAGES"
 PKG_COUNT=$(echo "$PACKAGES" | wc -w)
 echo "📦 共 $PKG_COUNT 个包"
+
+# 对 daed/openclash 加 @local tag，强制只从本地源安装
+# (^| )/( |$) 锚定防误匹配 hyphen 子串
+PACKAGES=$(echo "$PACKAGES" | sed -E \
+  -e 's/(^| )daed( |$)/\1daed@local\2/g' \
+  -e 's/(^| )luci-app-daed( |$)/\1luci-app-daed@local\2/g' \
+  -e 's/(^| )luci-i18n-daed-zh-cn( |$)/\1luci-i18n-daed-zh-cn@local\2/g' \
+  -e 's/(^| )luci-app-openclash( |$)/\1luci-app-openclash@local\2/g')
 
 # ============= 6. 配置特殊包 =============
 # OpenClash 内核
