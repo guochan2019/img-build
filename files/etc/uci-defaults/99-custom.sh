@@ -12,7 +12,7 @@ if [ -f "$CUSTOM_IP_FILE" ]; then
   CUSTOM_IP=$(cat "$CUSTOM_IP_FILE" | head -1)
   echo "📖 从 $CUSTOM_IP_FILE 读取 IP: $CUSTOM_IP" >> $LOGFILE
 else
-  CUSTOM_IP="192.168.50.2"
+  CUSTOM_IP="192.168.50.5"
   echo "⚠️ $CUSTOM_IP_FILE 不存在，使用默认 $CUSTOM_IP" >> $LOGFILE
 fi
 

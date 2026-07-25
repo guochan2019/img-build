@@ -6,7 +6,7 @@ on:
       custom_router_ip:
         description: '路由器管理地址'
         required: true
-        default: '192.168.50.2'
+        default: '192.168.50.5'
       profile:
         description: '固件大小 (MB)'
         required: true
