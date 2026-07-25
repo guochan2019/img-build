@@ -6,10 +6,10 @@ on:
       luci_version:
         description: '选择 luci 版本'
         required: false
-        default: '25.12'
+        default: '25.12.1'
         type: choice
         options:
-          - '25.12'
+          - '25.12.1'
       pppoe_account:
         description: 'PPPoE 宽带账号'
         required: false

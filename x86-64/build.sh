@@ -33,27 +33,10 @@ tar -czf /home/build/immortalwrt/packages/vmlinux-btf-1.0.0.apk \
 echo "🔄 下载第三方预编译包..." >> $LOGFILE
 source shell/apk-custom-packages.sh
 
-# ============= 3. 注册本地包仓库（修复 apk 相对路径 bug）=============
-# OpenWrt Issue #18032: apk-tools 新版不支持 repositories.conf 的相对路径
-# 此时 packages/ 已有 vmlinux-btf + 第三方包，构建完整索引
-echo "🔄 注册本地包仓库..." >> $LOGFILE
-cd /home/build/immortalwrt/packages
-apk index -o packages.adb *.apk --rewrite 2>/dev/null || true
-# 本地仓库插到 repositories.conf 最前面，优先级最高
-# 这样第三方包（mosdns/v2ray-geodata/daed/openclash）优先于官方仓库
-LOCAL_REPO="src file:packages file:///home/build/immortalwrt/packages"
-if [ -f /home/build/immortalwrt/repositories.conf ]; then
-  # 文件存在，插到第一行
-  if ! grep -q "file:///home/build/immortalwrt/packages" /home/build/immortalwrt/repositories.conf 2>/dev/null; then
-    sed -i "1i $LOCAL_REPO" /home/build/immortalwrt/repositories.conf
-    echo "✅ 本地包仓库已注册（最高优先级）" >> $LOGFILE
-  fi
-else
-  # 文件不存在，创建并写入官方仓库+本地仓库
-  echo "$LOCAL_REPO" > /home/build/immortalwrt/repositories.conf
-  echo "✅ 本地包仓库已注册（新建 repositories.conf）" >> $LOGFILE
-fi
-cd /home/build/immortalwrt
+# ============= 3. 本地 packages/ 整理 =============
+# apk-custom-packages.sh 已将 .apk 下载到 packages/
+# ImageBuilder 会自动从 packages/ 读取 .apk，无需额外注册
+echo "✅ 本地 packages/ 就绪: $(ls /home/build/immortalwrt/packages/*.apk 2>/dev/null | wc -l) 个 .apk" >> $LOGFILE
 
 # ============= 4. frpc 翻译处理 =============
 echo "🔄 处理 frpc 翻译..." >> $LOGFILE
