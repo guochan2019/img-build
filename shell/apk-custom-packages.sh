@@ -42,44 +42,21 @@ else
 fi
 # ============= QiuSimons daed =============
 echo "🔄 下载 QiuSimons daed..."
-# 方案：用 HTTP redirect 获取最新 release tag（不走 API，不限流）
-DAED_TAG=$(curl -sL -o /dev/null -w '%{url_effective}' \
-  "https://github.com/QiuSimons/luci-app-daed/releases/latest" 2>/dev/null | \
-  grep -o 'tag/[^/]*$' | cut -d/ -f2 || true)
-
-if [ -z "$DAED_TAG" ]; then
-  # 兜底：最后已知可用版本
-  DAED_TAG="daed_2026.07.17-r1"
-fi
-
+# 直接硬编码已知版本下载（非 API，不限流）
+DAED_TAG="daed_2026.07.17-r1"
 DAED_BASE="https://github.com/QiuSimons/luci-app-daed/releases/download/$DAED_TAG"
-# 从 expanded_assets 静态页提取 x86_64 apk 文件名（不渲染 JS）
-DAED_FILES_RAW=$(curl -sL "https://github.com/QiuSimons/luci-app-daed/releases/expanded_assets/$DAED_TAG" 2>/dev/null | \
-  grep -o "href=\"[^\"]*download/$DAED_TAG/[^\"]*x86_64-openwrt-25\\.12\\.apk\"" | \
-  sed "s|.*download/$DAED_TAG/||;s|\"||" | sort -u || true)
-
+DAED_FILES="daed-2026.07.17-r1-x86_64-openwrt-25.12.apk luci-app-daed-1.4-r1-openwrt-25.12.apk luci-i18n-daed-zh-cn-25.283.11553.bce4b5f-openwrt-25.12.apk"
 all_ok=true
-if [ -z "$DAED_FILES_RAW" ]; then
-  echo "  ⚠️ expanded_assets 获取失败，使用 API 兜底"
-  DAED_FILES_RAW=$(curl -sf "https://api.github.com/repos/QiuSimons/luci-app-daed/releases/tags/$DAED_TAG" 2>/dev/null | \
-    grep -o '"name":"[^"]*x86_64-openwrt-25\\.12\\.apk"' | cut -d'"' -f4 || true)
-fi
-if [ -z "$DAED_FILES_RAW" ]; then
-  echo "  ⚠️ 所有获取方式失败，跳过 daed 下载"
-  all_ok=false
-fi
-
-while IFS= read -r fname; do
-  [ -z "$fname" ] && continue
-  # 重命名：去掉架构后缀使文件名匹配 {pkgname}-{pkgver}.apk 格式
-  target=$(echo "$fname" | sed 's/-x86_64-openwrt-25\.[0-9]\+\(\.[0-9]\+\)\?//')
-  if github_download "$DAED_BASE/$fname" "/home/build/immortalwrt/packages/$target"; then
-    echo "  ✅ $fname 已下载"
+for f in $DAED_FILES; do
+  # 重命名去掉架构后缀，使文件名匹配 {pkgname}-{pkgver}.apk
+  target=$(echo "$f" | sed 's/-x86_64-openwrt-25\.[0-9]\+\(\.[0-9]\+\)\?//')
+  if github_download "$DAED_BASE/$f" "/home/build/immortalwrt/packages/$target"; then
+    echo "  ✅ $f 已下载"
   else
-    echo "  ⚠️ $fname 下载失败"
+    echo "  ⚠️ $f 下载失败"
     all_ok=false
   fi
-done <<< "$DAED_FILES_RAW"
+done
 
 if [ "$all_ok" = true ]; then
   CUSTOM_PACKAGES="$CUSTOM_PACKAGES daed luci-app-daed luci-i18n-daed-zh-cn"
