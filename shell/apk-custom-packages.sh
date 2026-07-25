@@ -34,24 +34,18 @@ fi
 
 # ============= QiuSimons daed =============
 echo "🔄 下载 QiuSimons daed..."
-DAED_DATA=$(curl -sf https://api.github.com/repos/QiuSimons/luci-app-daed/releases/latest 2>/dev/null || true)
-DAED_TAG=$(echo "$DAED_DATA" | grep '"tag_name"' | cut -d'"' -f4)
-if [ -n "$DAED_TAG" ]; then
-  # 下载 daed 后端（x86_64 + openwrt-25.12）
-  echo "$DAED_DATA" | grep -o "https://[^\"]*x86_64-openwrt-25\.12\.apk" | while read url; do
-    curl -fsSL -o "/home/build/immortalwrt/packages/$(basename $url)" "$url" && echo "  ✅ $(basename $url) 已下载" || echo "  ⚠️ $(basename $url) 下载失败"
-  done
-  # 下载 luci-app-daed（不区分架构）
-  echo "$DAED_DATA" | grep -o "https://[^\"]*luci-app-daed[^\"]*openwrt-25\.12\.apk" | while read url; do
-    curl -fsSL -o "/home/build/immortalwrt/packages/$(basename $url)" "$url" && echo "  ✅ $(basename $url) 已下载" || echo "  ⚠️ $(basename $url) 下载失败"
-  done
-  # 下载中文翻译
-  echo "$DAED_DATA" | grep -o "https://[^\"]*luci-i18n-daed[^\"]*openwrt-25\.12\.apk" | while read url; do
-    curl -fsSL -o "/home/build/immortalwrt/packages/$(basename $url)" "$url" && echo "  ✅ $(basename $url) 已下载" || echo "  ⚠️ $(basename $url) 下载失败"
-  done
+# 直接从 GitHub 预编译发布页下载已知文件
+# URL 模式是固定的: /releases/download/{tag}/{filename}
+DAED_TAG="daed_2026.07.17-r1"
+DAED_BASE_URL="https://github.com/QiuSimons/luci-app-daed/releases/download/$DAED_TAG"
+DAED_FILES="daed-2026.07.17-r1-x86_64-openwrt-25.12.apk luci-app-daed-1.4-r1-openwrt-25.12.apk luci-i18n-daed-zh-cn-25.283.11553.bce4b5f-openwrt-25.12.apk"
+all_ok=true
+for f in $DAED_FILES; do
+  curl -fsSL --connect-timeout 10 -o "/home/build/immortalwrt/packages/$f" "$DAED_BASE_URL/$f" && \
+    echo "  ✅ $f 已下载" || { echo "  ⚠️ $f 下载失败"; all_ok=false; }
+done
+if [ "$all_ok" = true ]; then
   CUSTOM_PACKAGES="$CUSTOM_PACKAGES daed luci-app-daed luci-i18n-daed-zh-cn"
-else
-  echo "⚠️ daed 版本获取失败，将使用官方仓库版"
 fi
 
 # ============= vernesong OpenClash =============
