@@ -3,7 +3,7 @@ set -e
 
 # =============================================================
 # build.sh — 在 ImmortalWrt ImageBuilder Docker 内执行
-# 下载第三方预编译包 → 处理翻译/版本 → 组装固件
+# 下载第三方预编译包 → 版本追踪 → 组装固件
 # =============================================================
 
 LOGFILE="/tmp/img-build-log.txt"
@@ -30,26 +30,7 @@ if [ -n "$APK_BIN" ]; then
 fi
 echo "  packages/ 就绪: $(ls /home/build/immortalwrt/packages/*.apk 2>/dev/null | wc -l) 个 .apk"
 
-# ============= 4. frpc 翻译处理 =============
-echo "🔄 处理 frpc 翻译..."
-PO2LMO=$(find /home/build/immortalwrt/staging_dir/host -name po2lmo -type f 2>/dev/null | head -1)
-if [ -n "$PO2LMO" ]; then
-  git clone --depth 1 https://github.com/immortalwrt/luci.git /tmp/luci-frpc 2>/dev/null || true
-  if [ -f /tmp/luci-frpc/applications/luci-app-frpc/po/zh_Hans/frpc.po ]; then
-    mkdir -p /home/build/immortalwrt/files/usr/lib/lua/luci/i18n
-    # 修改翻译：frp 客户端 → Frp 客户端
-    sed -i 's/msgstr "frp 客户端"/msgstr "Frp 客户端"/' \
-      /tmp/luci-frpc/applications/luci-app-frpc/po/zh_Hans/frpc.po
-    $PO2LMO /tmp/luci-frpc/applications/luci-app-frpc/po/zh_Hans/frpc.po \
-      /home/build/immortalwrt/files/usr/lib/lua/luci/i18n/frpc.zh-cn.lmo
-    echo "  ✅ frpc 翻译已更新"
-  fi
-  rm -rf /tmp/luci-frpc
-else
-  echo "  ⚠️ po2lmo 不可用，frpc 翻译使用官方默认"
-fi
-
-# ============= 5. Tailscale 版本追踪 =============
+# ============= 4. Tailscale 版本追踪 =============
 echo "🔄 检查 Tailscale 最新版本..."
 TS_VERSION=$(curl -s https://api.github.com/repos/tailscale/tailscale/releases/latest 2>/dev/null | \
   grep '"tag_name"' | head -1 | cut -d'"' -f4 | sed 's/^v//')
@@ -70,7 +51,7 @@ else
   echo "  ⚠️ Tailscale 版本查询失败，使用官方仓库版本"
 fi
 
-# ============= 6. 从 .config 提取所有包 =============
+# ============= 5. 从 .config 提取所有包 =============
 # 过滤配置项别名和第三方 feed 包（不在官方仓库也不在本地 packages/ 的）
 echo "🔄 从 .config 提取包列表..."
 PACKAGES=""
@@ -100,7 +81,7 @@ PACKAGES="$PACKAGES $CUSTOM_PACKAGES"
 PKG_COUNT=$(echo "$PACKAGES" | wc -w)
 echo "📦 共 $PKG_COUNT 个包"
 
-# ============= 7. 配置特殊包 =============
+# ============= 6. 配置特殊包 =============
 # OpenClash 内核
 if echo "$PACKAGES" | grep -q "luci-app-openclash"; then
   echo "🔄 下载 OpenClash 内核..."
@@ -114,7 +95,7 @@ if echo "$PACKAGES" | grep -q "luci-app-openclash"; then
   fi
 fi
 
-# ============= 8. 构建镜像 =============
+# ============= 7. 构建镜像 =============
 echo "📦 开始构建固件..."
 echo "Packages: $PACKAGES"
 make image PROFILE="generic" PACKAGES="$PACKAGES" \
