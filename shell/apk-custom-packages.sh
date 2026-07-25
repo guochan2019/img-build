@@ -37,6 +37,22 @@ while IFS= read -r url; do
   fi
 done <<< "$FB_APKS"
 echo "  ✅ feed-builder 包已下载 ($dl_count 个 .apk)"
+# ImageBuilder 25.12.x 校验 .apk 文件名必须与内部元数据一致
+# OpenWrt 构建系统在版本号中使用 ~ 分隔 git commit hash
+# 但 GitHub Release 文件名可能用 . 替代了 ~，导致校验失败
+# 修复：将文件名中版本号部分的 . (分隔 commit hash) 替换为 ~
+cd /home/build/immortalwrt/packages
+for f in *.apk; do
+  # ImageBuilder 25.12.x 要求 .apk 文件名与内部版本号一致
+  # OpenWrt APK 内部版本用 ~ 分隔 commit hash（如 2022.12.15~47b8ee51-r4）
+  # 但文件名可能用 . 替代了 ~，需修正
+  # 匹配模式：版本号末尾的数字段.提交哈希 → 数字段~提交哈希
+  newname=$(echo "$f" | sed -E 's/([0-9]+\.[0-9]+\.[0-9]+)\.([0-9a-f]{7,})/\1~\2/')
+  if [ "$f" != "$newname" ] && [ -n "$newname" ]; then
+    mv "$f" "$newname" 2>/dev/null && echo "  ↪ $f → $newname"
+  fi
+done
+cd /home/build/immortalwrt
 # 所有 feed-builder 编译的包
 CUSTOM_PACKAGES="$CUSTOM_PACKAGES nikki luci-app-nikki luci-i18n-nikki-zh-cn"
 CUSTOM_PACKAGES="$CUSTOM_PACKAGES mihomo-meta"
