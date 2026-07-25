@@ -38,7 +38,10 @@ source shell/apk-custom-packages.sh
 # 但 ImageBuilder 的 repositories.conf 已指向 packages/，需要索引
 echo "🔄 重建本地包索引..." >> $LOGFILE
 cd /home/build/immortalwrt/packages
-apk index --output packages.adb --rewrite *.apk 2>&1 | head -3 >> $LOGFILE
+echo "apk version: $(apk --version 2>&1)" >> $LOGFILE
+echo "apk index --output packages.adb --rewrite *.apk" >> $LOGFILE
+apk index --output packages.adb --rewrite *.apk 2>&1 | tee -a $LOGFILE /dev/stderr | head -5
+ls -la packages.adb >> $LOGFILE 2>&1 || echo "⚠️ packages.adb 未创建" | tee -a $LOGFILE /dev/stderr
 echo "✅ 本地 packages/ 就绪: $(ls *.apk 2>/dev/null | wc -l) 个 .apk" >> $LOGFILE
 cd /home/build/immortalwrt
 
