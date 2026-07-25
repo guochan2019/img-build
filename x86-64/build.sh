@@ -16,9 +16,8 @@ mkdir -p /home/build/immortalwrt/packages
 echo "🔄 下载第三方预编译包..." 
 source shell/apk-custom-packages.sh
 
-# ============= 3. 创建本地包索引（无签名 + chmod a-w 防覆盖）=============
-# Makefile 内部 mkndx 输出被 >/dev/null 2>/dev/null || true 吞掉了。
-# 我们手动建索引 + chmod a-w 防止被内部 mkndx 覆盖（它会先截断再签名，签名失败后索引变空）。
+# ============= 3. 创建本地包索引 + 设置优先级 =============
+# 本地 packages/ 优先级必须高于官方 repos，否则 apk 会选官方同名包
 echo "🔄 创建本地包索引..."
 APK_BIN=$(find /home/build/immortalwrt/staging_dir/host/bin -name apk -type f 2>/dev/null | head -1)
 if [ -n "$APK_BIN" ]; then
@@ -27,6 +26,12 @@ if [ -n "$APK_BIN" ]; then
     echo "  ✅ 索引已创建 ($(wc -c < packages.adb) bytes)" || echo "  ⚠️ mkndx 失败"
   chmod a-w packages.adb 2>/dev/null
   cd /home/build/immortalwrt
+fi
+# 把本地 packages/ 源插入 repositories.conf 最前面
+# apk 按文件顺序解析源，第一个匹配的源优先
+if [ -f /home/build/immortalwrt/repositories.conf ]; then
+  sed -i '1i src file:packages file:///home/build/immortalwrt/packages' \
+    /home/build/immortalwrt/repositories.conf 2>/dev/null || true
 fi
 echo "  packages/ 就绪: $(ls /home/build/immortalwrt/packages/*.apk 2>/dev/null | wc -l) 个 .apk"
 
