@@ -31,6 +31,7 @@ echo "🔄 下载第三方预编译包..."
 source shell/apk-custom-packages.sh
 
 # ============= 3. 构建本地包索引 =============
+# ============= 3. 构建本地包索引 =============
 # 用 ImageBuilder 自有 apk（在 staging_dir 下）重建 packages.adb
 echo "🔄 重建本地包索引..."
 APK_BIN=""
@@ -41,23 +42,20 @@ if [ -n "$APK_BIN" ]; then
   echo "  找到 apk: $APK_BIN"
   cd /home/build/immortalwrt/packages
   echo "  .apk count: $(ls *.apk 2>/dev/null | wc -l)"
-  # 用正确的 mkndx 语法建索引
-  # 关键参数: --root=项目根 --allow-untrusted 跳签名验证
-  # 排除 vmlinux-btf 占位包（格式不标准会导致 mkndx 报错）
-  if ls *x86_64*.apk *noarch*.apk *.apk 2>/dev/null | grep -v vmlinux-btf | head -1 >/dev/null; then
-    $APK_BIN mkndx \
-      --root /home/build/immortalwrt \
-      --keys-dir /home/build/immortalwrt \
-      --allow-untrusted \
-      --output packages.adb \
-      $(ls *.apk | grep -v vmlinux-btf) 2>&1 && echo "  ✅ mkndx 成功" || echo "  ⚠️ mkndx 失败"
-  else
-    echo "  ⚠️ 没有可索引的 .apk"
-  fi
-  ls -la packages.adb 2>/dev/null && echo "  packages.adb created" || echo "  packages.adb NOT created"
+  # 验证所有 .apk 文件有效性（不创建索引）
+  # 然后删除 mkndx 结果，让 make image 自动用本地密钥签名重建
+  # 见 Issue #23154: ImageBuilder 自动生成签名后的 packages.adb
+  $APK_BIN mkndx \
+    --root /home/build/immortalwrt \
+    --keys-dir /home/build/immortalwrt \
+    --allow-untrusted \
+    --output /dev/null \
+    $(ls *.apk | grep -v vmlinux-btf) 2>&1 && echo "  ✅ .apk 包验证通过" || echo "  ⚠️ 部分包验证失败"
+  rm -f packages.adb
+  echo "  packages.adb 已删除，make image 将自动重建"
   cd /home/build/immortalwrt
 else
-  echo "  ⚠️ 未找到 apk 二进制，跳过索引创建"
+  echo "  ⚠️ 未找到 apk 二进制，跳过验证"
 fi
 
 # ============= 4. frpc 翻译处理 =============
