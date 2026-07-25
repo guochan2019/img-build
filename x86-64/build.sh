@@ -9,24 +9,33 @@ set -e
 LOGFILE="/tmp/img-build-log.txt"
 echo "Starting img-build at $(date)" > $LOGFILE
 
-# ============= 1. 确保 packages/ 目录存在 =============
+# ============= 1. 创建 vmlinux-btf 占位包（daed 依赖它）=============
+# .PKGINFO 必须用 apk v3 格式（key = value），不能有逗号
+mkdir -p /tmp/vmlinux-btf-pkg
+cat > /tmp/vmlinux-btf-pkg/.PKGINFO << 'PKGINFO'
+pkgname = vmlinux-btf
+pkgver = 1.0.0
+pkgdesc = Dummy package for BTF kernel support
+url = 
+packager = img-build
+size = 0
+architecture = x86_64
+license = GPL-2.0-only
+PKGINFO
 mkdir -p /home/build/immortalwrt/packages
+tar -czf /home/build/immortalwrt/packages/vmlinux-btf-1.0.0.apk -C /tmp/vmlinux-btf-pkg .
+echo "  vmlinux-btf 占位包已创建"
 
 # ============= 2. 第三方预编译包下载 =============
 echo "🔄 下载第三方预编译包..." 
 source shell/apk-custom-packages.sh
 
-# ============= 3. 清理占位包 + 让 make image 自动建签名索引 =============
+# ============= 3. 让 make image 自动建签名索引 =============
 # ImageBuilder 的 Makefile 在 make image 内部自动:
-#   1. _check_keys 生成本地签名密钥 keys/local-private-key.pem
+#   1. _check_keys 生成本地签名密钥
 #   2. mkndx --keys-dir keys --sign keys/local-key.pem
 #         --allow-untrusted --output packages.adb *.apk
-# 参见 openwrt commit 578f266 (2024-10):
-#   "imagebuilder: complete support for local signing keys"
-# 我们只需要确保 packages/ 下有有效 .apk 即可
-# 清理格式不标准的 vmlinux-btf 占位包（Makefile 的 mkndx 会用它）
-echo "🔄 清理占位包..."
-rm -f /home/build/immortalwrt/packages/vmlinux-btf-*.apk
+# 参见 openwrt commit 578f266 (2024-10)
 echo "  packages/ 就绪: $(ls /home/build/immortalwrt/packages/*.apk 2>/dev/null | wc -l) 个 .apk"
 
 # ============= 4. frpc 翻译处理 =============
