@@ -37,6 +37,9 @@ if [ -n "$PO2LMO" ]; then
   git clone --depth 1 https://github.com/immortalwrt/luci.git /tmp/luci-frpc 2>/dev/null || true
   if [ -f /tmp/luci-frpc/applications/luci-app-frpc/po/zh_Hans/frpc.po ]; then
     mkdir -p /home/build/immortalwrt/files/usr/lib/lua/luci/i18n
+    # 修改翻译：frp 客户端 → Frp 客户端
+    sed -i 's/msgstr "frp 客户端"/msgstr "Frp 客户端"/' \
+      /tmp/luci-frpc/applications/luci-app-frpc/po/zh_Hans/frpc.po
     $PO2LMO /tmp/luci-frpc/applications/luci-app-frpc/po/zh_Hans/frpc.po \
       /home/build/immortalwrt/files/usr/lib/lua/luci/i18n/frpc.zh-cn.lmo
     echo "  ✅ frpc 翻译已更新"
