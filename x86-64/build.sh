@@ -30,7 +30,11 @@ if [ -n "$APK_BIN" ]; then
 fi
 echo "  packages/ 就绪: $(ls /home/build/immortalwrt/packages/*.apk 2>/dev/null | wc -l) 个 .apk"
 
-# ============= 4. Tailscale 版本追踪 =============
+# ============= 4. frpc 翻译处理（预编译 .lmo 在 files/ 中）=============
+# ImageBuilder Docker 不含 po2lmo，.lmo 已预先编译好入仓。
+# files/usr/lib/lua/luci/i18n/frpc.zh-cn.lmo 会在 make image 时
+# 覆盖官方 luci-i18n-frpc-zh-cn 包中的同名文件。
+# ============= 5. Tailscale 版本追踪 =============
 echo "🔄 检查 Tailscale 最新版本..."
 TS_VERSION=$(curl -s https://api.github.com/repos/tailscale/tailscale/releases/latest 2>/dev/null | \
   grep '"tag_name"' | head -1 | cut -d'"' -f4 | sed 's/^v//')
