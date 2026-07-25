@@ -34,7 +34,7 @@ fi
 
 # ============= QiuSimons daed =============
 echo "🔄 下载 QiuSimons daed..."
-DAED_DATA=$(curl -sf https://api.github.com/repos/QiuSimons/luci-app-daed/releases/latest)
+DAED_DATA=$(curl -sf https://api.github.com/repos/QiuSimons/luci-app-daed/releases/latest 2>/dev/null || true)
 DAED_TAG=$(echo "$DAED_DATA" | grep '"tag_name"' | cut -d'"' -f4)
 if [ -n "$DAED_TAG" ]; then
   # 下载 daed 后端（x86_64 + openwrt-25.12）
@@ -56,11 +56,13 @@ fi
 
 # ============= vernesong OpenClash =============
 echo "🔄 下载 OpenClash..."
-OC_DATA=$(curl -sf https://api.github.com/repos/vernesong/OpenClash/releases/latest)
-OC_APK_URL=$(echo "$OC_DATA" | grep "browser_download_url.*\.apk" | head -1 | cut -d '"' -f 4)
+OC_DATA=$(curl -sf https://api.github.com/repos/vernesong/OpenClash/releases/latest 2>/dev/null || true)
+OC_APK_URL=$(echo "$OC_DATA" | grep "browser_download_url.*\\.apk" | head -1 | cut -d '"' -f 4)
 if [ -n "$OC_APK_URL" ]; then
   curl -fsSL -o "/home/build/immortalwrt/packages/$(basename $OC_APK_URL)" "$OC_APK_URL" && echo "✅ OpenClash 已下载" || echo "⚠️ OpenClash 下载失败"
   CUSTOM_PACKAGES="$CUSTOM_PACKAGES luci-app-openclash"
+else
+  echo "⚠️ OpenClash 版本获取失败"
 fi
 # clash_meta 内核由 build.sh 处理
 
