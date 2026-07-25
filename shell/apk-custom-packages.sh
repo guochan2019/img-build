@@ -48,7 +48,7 @@ if [ "$all_ok" = true ]; then
   CUSTOM_PACKAGES="$CUSTOM_PACKAGES daed luci-app-daed luci-i18n-daed-zh-cn"
   # 下载 daed 依赖的 vmlinux-btf（从 wukongdaily 仓库）
   echo "🔄 下载 vmlinux-btf（daed 依赖）..."
-  BTF_URL="https://github.com/wukongdaily/apk/raw/main/run/x86/daed/vmlinux-btf-6.12.79.apk"
+  BTF_URL="https://raw.githubusercontent.com/wukongdaily/apk/master/run/x86/daed/vmlinux-btf-6.12.79.apk"
   curl -fsSL --connect-timeout 10 \
     -o "/home/build/immortalwrt/packages/vmlinux-btf-6.12.79.apk" \
     "$BTF_URL" && echo "  ✅ vmlinux-btf 已下载"
