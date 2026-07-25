@@ -41,14 +41,18 @@ if [ -n "$APK_BIN" ]; then
   echo "  找到 apk: $APK_BIN"
   cd /home/build/immortalwrt/packages
   echo "  .apk count: $(ls *.apk 2>/dev/null | wc -l)"
-  # 第三方包签名不可信，从 .apk 中剥离 .SIGN.* 文件
-  # .apk 是 gzip 压缩的 tar 包，去掉签名后 mkndx 不再验证
-  echo "  剥离签名..."
-  for apk in *.apk; do
-    gunzip -c "$apk" | tar --delete '.SIGN.*' 2>/dev/null | gzip > "$apk.unsigned" && \
-      mv "$apk.unsigned" "$apk"
-  done
-  $APK_BIN mkndx -o packages.adb *.apk 2>&1 && echo "  ✅ mkndx 成功" || echo "  ⚠️ mkndx 失败"
+  # 用正确的 mkndx 语法建索引
+  # 关键参数: --root=项目根 --allow-untrusted 跳签名验证
+  if $APK_BIN mkndx \
+    --root /home/build/immortalwrt \
+    --keys-dir /home/build/immortalwrt \
+    --allow-untrusted \
+    --output packages.adb \
+    *.apk 2>&1; then
+    echo "  ✅ mkndx 成功"
+  else
+    echo "  ⚠️ mkndx 失败"
+  fi
   ls -la packages.adb 2>/dev/null && echo "  packages.adb created" || echo "  packages.adb NOT created"
   cd /home/build/immortalwrt
 else
