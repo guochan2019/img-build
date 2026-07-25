@@ -17,7 +17,8 @@ echo "🔄 下载第三方预编译包..."
 source shell/apk-custom-packages.sh
 
 # ============= 3. 创建本地包索引（无签名 + chmod a-w 防覆盖）=============
-# chmod a-w 阻止 make image 内部 mkndx 覆盖索引
+# Makefile 内部 mkndx 输出被 >/dev/null 2>/dev/null || true 吞掉了。
+# 我们手动建索引 + chmod a-w 防止被内部 mkndx 覆盖（它会先截断再签名，签名失败后索引变空）。
 echo "🔄 创建本地包索引..."
 APK_BIN=$(find /home/build/immortalwrt/staging_dir/host/bin -name apk -type f 2>/dev/null | head -1)
 if [ -n "$APK_BIN" ]; then
@@ -30,26 +31,26 @@ fi
 echo "  packages/ 就绪: $(ls /home/build/immortalwrt/packages/*.apk 2>/dev/null | wc -l) 个 .apk"
 
 # ============= 4. frpc 翻译处理 =============
-echo "🔄 处理 frpc 翻译..." >> $LOGFILE
+echo "🔄 处理 frpc 翻译..."
 if command -v po2lmo &>/dev/null; then
   git clone --depth 1 https://github.com/immortalwrt/luci.git /tmp/luci-frpc 2>/dev/null || true
   if [ -f /tmp/luci-frpc/applications/luci-app-frpc/po/zh_Hans/frpc.po ]; then
     mkdir -p /home/build/immortalwrt/files/usr/lib/lua/luci/i18n
     po2lmo /tmp/luci-frpc/applications/luci-app-frpc/po/zh_Hans/frpc.po \
       /home/build/immortalwrt/files/usr/lib/lua/luci/i18n/frpc.zh-cn.lmo
-    echo "✅ frpc 翻译已更新" >> $LOGFILE
+    echo "  ✅ frpc 翻译已更新"
   fi
   rm -rf /tmp/luci-frpc
 else
-  echo "⚠️ po2lmo 不可用，frpc 翻译使用官方默认" >> $LOGFILE
+  echo "  ⚠️ po2lmo 不可用，frpc 翻译使用官方默认"
 fi
 
 # ============= 5. Tailscale 版本追踪 =============
-echo "🔄 检查 Tailscale 最新版本..." >> $LOGFILE
+echo "🔄 检查 Tailscale 最新版本..."
 TS_VERSION=$(curl -s https://api.github.com/repos/tailscale/tailscale/releases/latest 2>/dev/null | \
   grep '"tag_name"' | head -1 | cut -d'"' -f4 | sed 's/^v//')
 if [ -n "$TS_VERSION" ]; then
-  echo "Tailscale 最新版本: $TS_VERSION" >> $LOGFILE
+  echo "  Tailscale 最新版本: $TS_VERSION"
   wget -qO /tmp/tailscale.tar.gz \
     "https://pkgs.tailscale.com/stable/tailscale_${TS_VERSION}_amd64.tgz" 2>/dev/null || \
     wget -qO /tmp/tailscale.tar.gz \
@@ -59,10 +60,10 @@ if [ -n "$TS_VERSION" ]; then
     mkdir -p /home/build/immortalwrt/files/usr/sbin /home/build/immortalwrt/files/usr/bin
     cp /tmp/tailscale_${TS_VERSION}_amd64/tailscale /home/build/immortalwrt/files/usr/bin/tailscale 2>/dev/null
     cp /tmp/tailscale_${TS_VERSION}_amd64/tailscaled /home/build/immortalwrt/files/usr/sbin/tailscaled 2>/dev/null
-    echo "✅ Tailscale ${TS_VERSION} 已下载" >> $LOGFILE
+    echo "  ✅ Tailscale ${TS_VERSION} 已下载"
   fi
 else
-  echo "⚠️ Tailscale 版本查询失败，使用官方仓库版本" >> $LOGFILE
+  echo "  ⚠️ Tailscale 版本查询失败，使用官方仓库版本"
 fi
 
 # ============= 6. 从 .config 提取所有包 =============
@@ -98,14 +99,14 @@ echo "📦 共 $PKG_COUNT 个包"
 # ============= 7. 配置特殊包 =============
 # OpenClash 内核
 if echo "$PACKAGES" | grep -q "luci-app-openclash"; then
-  echo "🔄 下载 OpenClash 内核..." >> $LOGFILE
+  echo "🔄 下载 OpenClash 内核..."
   mkdir -p /home/build/immortalwrt/files/etc/openclash/core
   META_URL="https://raw.githubusercontent.com/vernesong/OpenClash/core/master/meta/clash-linux-amd64-v1.tar.gz"
   wget -qO- "$META_URL" 2>/dev/null | tar xOvz > \
     /home/build/immortalwrt/files/etc/openclash/core/clash_meta 2>/dev/null || true
   if [ -f /home/build/immortalwrt/files/etc/openclash/core/clash_meta ]; then
     chmod +x /home/build/immortalwrt/files/etc/openclash/core/clash_meta
-    echo "✅ OpenClash 内核已下载" >> $LOGFILE
+    echo "  ✅ OpenClash 内核已下载"
   fi
 fi
 
