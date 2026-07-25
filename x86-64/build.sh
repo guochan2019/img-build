@@ -41,9 +41,17 @@ cd /home/build/immortalwrt/packages
 apk index -o packages.adb *.apk --rewrite 2>/dev/null || true
 # 本地仓库插到 repositories.conf 最前面，优先级最高
 # 这样第三方包（mosdns/v2ray-geodata/daed/openclash）优先于官方仓库
-if ! grep -q "file:///home/build/immortalwrt/packages" /home/build/immortalwrt/repositories.conf 2>/dev/null; then
-  sed -i '1i src file:packages file:///home/build/immortalwrt/packages' /home/build/immortalwrt/repositories.conf
-  echo "✅ 本地包仓库已注册（最高优先级）" >> $LOGFILE
+LOCAL_REPO="src file:packages file:///home/build/immortalwrt/packages"
+if [ -f /home/build/immortalwrt/repositories.conf ]; then
+  # 文件存在，插到第一行
+  if ! grep -q "file:///home/build/immortalwrt/packages" /home/build/immortalwrt/repositories.conf 2>/dev/null; then
+    sed -i "1i $LOCAL_REPO" /home/build/immortalwrt/repositories.conf
+    echo "✅ 本地包仓库已注册（最高优先级）" >> $LOGFILE
+  fi
+else
+  # 文件不存在，创建并写入官方仓库+本地仓库
+  echo "$LOCAL_REPO" > /home/build/immortalwrt/repositories.conf
+  echo "✅ 本地包仓库已注册（新建 repositories.conf）" >> $LOGFILE
 fi
 cd /home/build/immortalwrt
 
