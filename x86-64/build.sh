@@ -52,7 +52,6 @@ if [ -n "$APK_BIN" ] && [ -f /home/build/immortalwrt/keys/local-private-key.pem 
     --sign /home/build/immortalwrt/keys/local-private-key.pem \
     --allow-untrusted \
     --output packages.adb \
-    --rewrite-archives \
     *.apk 2>&1 && echo "  ✅ 签名索引已创建" || echo "  ⚠️ mkndx 失败"
   ls -la packages.adb 2>/dev/null
   cd /home/build/immortalwrt
