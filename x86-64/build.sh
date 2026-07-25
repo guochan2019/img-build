@@ -43,15 +43,16 @@ if [ -n "$APK_BIN" ]; then
   echo "  .apk count: $(ls *.apk 2>/dev/null | wc -l)"
   # 用正确的 mkndx 语法建索引
   # 关键参数: --root=项目根 --allow-untrusted 跳签名验证
-  if $APK_BIN mkndx \
-    --root /home/build/immortalwrt \
-    --keys-dir /home/build/immortalwrt \
-    --allow-untrusted \
-    --output packages.adb \
-    *.apk 2>&1; then
-    echo "  ✅ mkndx 成功"
+  # 排除 vmlinux-btf 占位包（格式不标准会导致 mkndx 报错）
+  if ls *x86_64*.apk *noarch*.apk *.apk 2>/dev/null | grep -v vmlinux-btf | head -1 >/dev/null; then
+    $APK_BIN mkndx \
+      --root /home/build/immortalwrt \
+      --keys-dir /home/build/immortalwrt \
+      --allow-untrusted \
+      --output packages.adb \
+      $(ls *.apk | grep -v vmlinux-btf) 2>&1 && echo "  ✅ mkndx 成功" || echo "  ⚠️ mkndx 失败"
   else
-    echo "  ⚠️ mkndx 失败"
+    echo "  ⚠️ 没有可索引的 .apk"
   fi
   ls -la packages.adb 2>/dev/null && echo "  packages.adb created" || echo "  packages.adb NOT created"
   cd /home/build/immortalwrt
