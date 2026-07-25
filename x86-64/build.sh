@@ -10,9 +10,6 @@ LOGFILE="/tmp/img-build-log.txt"
 echo "Starting img-build at $(date)" > $LOGFILE
 
 # ============= 1. vmlinux-btf 占位包 =============
-# QiuSimons daed 声明依赖 vmlinux-btf，但 ImmortalWrt 25.12
-# 内核已内置 BTF（/sys/kernel/btf/vmlinux），不需要独立包。
-# 创建一个空 apk 占位包来满足依赖校验。
 echo "🔄 创建 vmlinux-btf 占位包..." >> $LOGFILE
 mkdir -p /tmp/vmlinux-btf-pkg
 cat > /tmp/vmlinux-btf-pkg/.PKGINFO << 'PKGINFO'
@@ -25,32 +22,31 @@ size = 0
 architecture = all
 license = "GPL-2.0-only"
 PKGINFO
+mkdir -p /home/build/immortalwrt/packages
 tar -czf /home/build/immortalwrt/packages/vmlinux-btf-1.0.0.apk \
   -C /tmp/vmlinux-btf-pkg . 2>/dev/null && echo "✅ vmlinux-btf 占位包已创建" >> $LOGFILE
 
 # ============= 2. 第三方预编译包下载 =============
-# 必须在本地仓库注册之前，确保 packages/ 目录有所有 .apk
-echo "🔄 下载第三方预编译包..." >> $LOGFILE
+echo "🔄 下载第三方预编译包..." 
 source shell/apk-custom-packages.sh
 
-# ============= 3. 本地 packages/ 整理 + 重建索引 =============
-# apk-custom-packages.sh 已将 .apk 下载到 packages/
-# 但 ImageBuilder 的 repositories.conf 已指向 packages/，需要索引
-echo "🔄 重建本地包索引..." >> $LOGFILE
-cd /home/build/immortalwrt/packages
-# apk 在 staging_dir/host/bin 下，不在系统 PATH
-APK_BIN=$(find /home/build/immortalwrt/staging_dir -name apk -type f 2>/dev/null | head -1)
+# ============= 3. 构建本地包索引 =============
+# 用 ImageBuilder 自有 apk（在 staging_dir 下）重建 packages.adb
+echo "🔄 重建本地包索引..."
+APK_BIN=""
+for d in /home/build/immortalwrt/staging_dir/host/bin /home/build/immortalwrt/staging_dir/host/lib/apk/tools; do
+  [ -x "$d/apk" ] && APK_BIN="$d/apk" && break
+done
 if [ -n "$APK_BIN" ]; then
-  echo "找到 apk: $APK_BIN" >> $LOGFILE
-  $APK_BIN index --output packages.adb --rewrite *.apk 2>&1 | head -3 >> $LOGFILE
+  echo "  找到 apk: $APK_BIN"
+  cd /home/build/immortalwrt/packages
+  $APK_BIN index --output packages.adb --rewrite *.apk 2>&1 || echo "  apk index 执行完毕（exit=$?）"
+  ls -la packages.adb
+  echo "  .apk count: $(ls *.apk 2>/dev/null | wc -l)"
+  cd /home/build/immortalwrt
 else
-  echo "⚠️ 未找到 apk 二进制，跳过索引" >> $LOGFILE
-  # 手动创建最小 packages.adb（空索引让 apk 不报错）
-  echo -n > packages.adb
+  echo "  ⚠️ 未找到 apk 二进制，跳过索引创建"
 fi
-ls -la packages.adb >> $LOGFILE 2>&1
-echo "📦 .apk count: $(ls *.apk 2>/dev/null | wc -l)" >> $LOGFILE
-cd /home/build/immortalwrt
 
 # ============= 4. frpc 翻译处理 =============
 echo "🔄 处理 frpc 翻译..." >> $LOGFILE
@@ -89,30 +85,34 @@ else
 fi
 
 # ============= 6. 从 .config 提取所有包 =============
-# ImageBuilder 的 make image 不读取 CONFIG_PACKAGE_*=y，
-# 需要显式写入 PACKAGES= 变量。
-# 同时过滤掉配置项别名（非真实包名）：
-#   dnsmasq_full_* — dnsmasq-full 的子选项
-#   *_INCLUDE_* — 插件的可选组件子选项
-#   TAR_* — tar 压缩格式子选项
-#   knot-resolver_dnstap, luci-lib-nixio_openssl — 子选项
-echo "🔄 从 .config 提取包列表..." >> $LOGFILE
+# 过滤配置项别名和第三方 feed 包（不在官方仓库也不在本地 packages/ 的）
+echo "🔄 从 .config 提取包列表..."
 PACKAGES=""
+# 需要在 .config 中排除的包（非官方仓库，不在本地 packages/）
+EXCLUDE_PKGS="luci-app-lucky luci-i18n-lucky-zh-cn lucky \
+  luci-app-momo luci-i18n-momo-zh-cn momo \
+  luci-app-nikki luci-i18n-nikki-zh-cn nikki \
+  luci-app-quickfile luci-i18n-quickfile-zh-cn quickfile \
+  luci-theme-kucat mihomo-meta sing-box ariang"
 while IFS='=' read -r line; do
   pkg=${line#CONFIG_PACKAGE_}
   pkg=${pkg%=y}
-  # 过滤子选项：dnsmasq_full_*, *_INCLUDE_*, TAR_*, knot-resolver_dnstap, luci-lib-nixio_openssl
+  # 过滤子选项
   case "$pkg" in
     dnsmasq_full_*|*_INCLUDE_*|TAR_*|knot-resolver_dnstap|luci-lib-nixio_openssl)
       continue ;;
   esac
+  # 过滤不在仓库的第三方包
+  skip=0
+  for ep in $EXCLUDE_PKGS; do [ "$pkg" = "$ep" ] && skip=1 && break; done
+  [ $skip -eq 1 ] && continue
   PACKAGES="$PACKAGES $pkg"
 done < <(grep '^CONFIG_PACKAGE_.*=y' /home/build/immortalwrt/.config)
 
-# 第三方包（由 apk-custom-packages.sh 下载到本地 packages/，优先级最高）
+# 第三方包（已在本地 packages/ 中的）
 PACKAGES="$PACKAGES $CUSTOM_PACKAGES"
 PKG_COUNT=$(echo "$PACKAGES" | wc -w)
-echo "📦 共 $PKG_COUNT 个包" >> $LOGFILE
+echo "📦 共 $PKG_COUNT 个包"
 
 # ============= 7. 配置特殊包 =============
 # OpenClash 内核
@@ -128,12 +128,9 @@ if echo "$PACKAGES" | grep -q "luci-app-openclash"; then
   fi
 fi
 
-# ============= 8. 打印包列表 =============
-echo "📦 最终包列表: $PACKAGES" >> $LOGFILE
+# ============= 8. 构建镜像 =============
+echo "📦 开始构建固件..."
 echo "Packages: $PACKAGES"
-
-# ============= 9. 构建镜像 =============
-echo "📦 开始构建固件..." >> $LOGFILE
 make image PROFILE="generic" PACKAGES="$PACKAGES" \
   FILES="/home/build/immortalwrt/files" \
   ROOTFS_PARTSIZE=256
