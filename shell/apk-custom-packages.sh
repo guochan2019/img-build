@@ -47,20 +47,12 @@ DAED_REPO="QiuSimons/luci-app-daed"
 DAED_ASSETS=$(github_latest_assets "$DAED_REPO")
 
 # 获取 x86_64 的 apk 下载地址（过滤 aarch64 和 i386）
-DAED_URLS=$(echo "$DAED_ASSETS" | grep -E 'x86_64-openwrt-25\.12\.apk' || true)
-if [ -z "$DAED_URLS" ]; then
-  # 最后已知可用版本兜底
-  DAED_TAG="daed_2026.07.17-r1"
-  DAED_BASE="https://github.com/QiuSimons/luci-app-daed/releases/download/$DAED_TAG"
-  DAED_URLS=$(cat << EOF
-$DAED_BASE/daed-2026.07.17-r1-x86_64-openwrt-25.12.apk
-$DAED_BASE/luci-app-daed-1.4-r1-openwrt-25.12.apk
-$DAED_BASE/luci-i18n-daed-zh-cn-25.283.11553.bce4b5f-openwrt-25.12.apk
-EOF
-)
-fi
-
+DAED_URLS=$(echo "$DAED_ASSETS" | grep -E 'x86_64-openwrt-25\\.12\\.apk' || true)
 all_ok=true
+if [ -z "$DAED_URLS" ]; then
+  echo "  ⚠️ API 获取失败，跳过 daed 下载"
+  all_ok=false
+fi
 while IFS= read -r url; do
 [ -z "$url" ] && continue
 fname=$(basename "$url")
@@ -84,10 +76,8 @@ if [ "$all_ok" = true ]; then
     BTF_URL="https://raw.githubusercontent.com/wukongdaily/apk/master/run/x86/daed/$ver"
   done
   if [ -z "$BTF_URL" ]; then
-    # 硬编码兜底
-    BTF_URL="https://raw.githubusercontent.com/wukongdaily/apk/master/run/x86/daed/vmlinux-btf-6.12.79.apk"
-  fi
-  if github_download "$BTF_URL" "/home/build/immortalwrt/packages/$(basename $BTF_URL)"; then
+    echo "  ⚠️ wukongdaily API 获取失败，跳过 vmlinux-btf 下载"
+  elif github_download "$BTF_URL" "/home/build/immortalwrt/packages/$(basename $BTF_URL)"; then
     echo "  ✅ 已下载: $(basename $BTF_URL)"
   else
     echo "  ⚠️ vmlinux-btf 下载失败"
