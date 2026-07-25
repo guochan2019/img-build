@@ -46,11 +46,10 @@ echo "🔄 下载 QiuSimons daed..."
 DAED_REPO="QiuSimons/luci-app-daed"
 DAED_ASSETS=$(github_latest_assets "$DAED_REPO")
 
-# 获取 x86_64 和 noarch 的 apk 下载地址
-DAED_URLS=$(echo "$DAED_ASSETS" | grep -E 'x86_64-openwrt-25\.12\.apk|luci-app-daed[^-].*openwrt-25\.12\.apk|luci-i18n-daed.*openwrt-25\.12\.apk' || true)
+# 获取 x86_64 的 apk 下载地址（过滤 aarch64 和 i386）
+DAED_URLS=$(echo "$DAED_ASSETS" | grep -E 'x86_64-openwrt-25\.12\.apk' || true)
 if [ -z "$DAED_URLS" ]; then
-  echo "  ⚠️ API 获取失败，使用硬编码兜底地址"
-  # 最后已知可用版本
+  # 最后已知可用版本兜底
   DAED_TAG="daed_2026.07.17-r1"
   DAED_BASE="https://github.com/QiuSimons/luci-app-daed/releases/download/$DAED_TAG"
   DAED_URLS=$(cat << EOF
@@ -63,14 +62,17 @@ fi
 
 all_ok=true
 while IFS= read -r url; do
-  [ -z "$url" ] && continue
-  fname=$(basename "$url")
-  if github_download "$url" "/home/build/immortalwrt/packages/$fname"; then
-    echo "  ✅ $fname 已下载"
-  else
-    echo "  ⚠️ $fname 下载失败"
-    all_ok=false
-  fi
+[ -z "$url" ] && continue
+fname=$(basename "$url")
+# 重命名：去掉架构后缀使文件名匹配 {pkgname}-{pkgver}.apk 格式
+# 否则 mkndx 解析后 apk 安装时报 "package mentioned in index not found"
+target=$(echo "$fname" | sed 's/-x86_64-openwrt-25\.[0-9]\+\(\.[0-9]\+\)\?//')
+if github_download "$url" "/home/build/immortalwrt/packages/$target"; then
+  echo "  ✅ $fname 已下载"
+else
+  echo "  ⚠️ $fname 下载失败"
+  all_ok=false
+fi
 done <<< "$DAED_URLS"
 
 if [ "$all_ok" = true ]; then
