@@ -141,14 +141,16 @@ if echo "$PACKAGES" | grep -q "luci-app-openclash"; then
 fi
 
 # 跳过本地仓库签名验证（第三方包无可信签名）
-export APK_NO_SIGNATURE_CHECK=1
+# 从 .config 读取当前签名设置，用 DISABLE_SIGN_CHECK=1 覆盖
+export DISABLE_SIGN_CHECK=1
 
 # ============= 8. 构建镜像 =============
 echo "📦 开始构建固件..."
 echo "Packages: $PACKAGES"
 make image PROFILE="generic" PACKAGES="$PACKAGES" \
   FILES="/home/build/immortalwrt/files" \
-  ROOTFS_PARTSIZE=256
+  ROOTFS_PARTSIZE=256 \
+  CONFIG_SIGNED_PACKAGES=n CONFIG_SIGNATURE_CHECK=n
 
 if [ $? -ne 0 ]; then
   echo "❌ 构建失败!" >> $LOGFILE
