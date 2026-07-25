@@ -3,7 +3,7 @@ set -e
 
 # =============================================================
 # build.sh — 在 ImmortalWrt ImageBuilder Docker 内执行
-# 下载第三方预编译包 → 翻译/版本追踪 → 组装固件
+# 下载第三方预编译包 → 组装固件（7 步）
 # =============================================================
 
 LOGFILE="/tmp/img-build-log.txt"
@@ -38,28 +38,7 @@ echo "  packages/ 就绪: $(ls /home/build/immortalwrt/packages/*.apk 2>/dev/nul
 # ============= 4. frpc 翻译处理（feed-builder 已编译 patched .lmo）=============
 # frpc 的 .po 已在 feed-builder 编译前 patched: 'frp 客户端' → 'Frp 客户端'
 # luci-app-frpc + luci-i18n-frpc-zh-cn 来自 feed-builder tar.gz
-# ============= 5. Tailscale 版本追踪 =============
-echo "🔄 检查 Tailscale 最新版本..."
-TS_VERSION=$(curl -s https://api.github.com/repos/tailscale/tailscale/releases/latest 2>/dev/null | \
-  grep '"tag_name"' | head -1 | cut -d'"' -f4 | sed 's/^v//')
-if [ -n "$TS_VERSION" ]; then
-  echo "  Tailscale 最新版本: $TS_VERSION"
-  wget -qO /tmp/tailscale.tar.gz \
-    "https://pkgs.tailscale.com/stable/tailscale_${TS_VERSION}_amd64.tgz" 2>/dev/null || \
-    wget -qO /tmp/tailscale.tar.gz \
-    "https://github.com/tailscale/tailscale/releases/download/v${TS_VERSION}/tailscale_${TS_VERSION}_amd64.tgz" 2>/dev/null || true
-  if [ -f /tmp/tailscale.tar.gz ]; then
-    tar -zxf /tmp/tailscale.tar.gz -C /tmp/
-    mkdir -p /home/build/immortalwrt/files/usr/sbin /home/build/immortalwrt/files/usr/bin
-    cp /tmp/tailscale_${TS_VERSION}_amd64/tailscale /home/build/immortalwrt/files/usr/bin/tailscale 2>/dev/null
-    cp /tmp/tailscale_${TS_VERSION}_amd64/tailscaled /home/build/immortalwrt/files/usr/sbin/tailscaled 2>/dev/null
-    echo "  ✅ Tailscale ${TS_VERSION} 已下载"
-  fi
-else
-  echo "  ⚠️ Tailscale 版本查询失败，使用官方仓库版本"
-fi
-
-# ============= 6. 从 .config 提取所有包 =============
+# ============= 5. 从 .config 提取所有包 =============
 # 过滤配置项别名和第三方 feed 包（不在官方仓库也不在本地 packages/ 的）
 echo "🔄 从 .config 提取包列表..."
 PACKAGES=""
@@ -85,7 +64,7 @@ PACKAGES="$PACKAGES $CUSTOM_PACKAGES"
 PKG_COUNT=$(echo "$PACKAGES" | wc -w)
 echo "📦 共 $PKG_COUNT 个包"
 
-# ============= 7. 配置特殊包 =============
+# ============= 6. 配置特殊包 =============
 # OpenClash 内核
 if echo "$PACKAGES" | grep -q "luci-app-openclash"; then
   echo "🔄 下载 OpenClash 内核..."
@@ -99,7 +78,7 @@ if echo "$PACKAGES" | grep -q "luci-app-openclash"; then
   fi
 fi
 
-# ============= 8. 构建镜像 =============
+# ============= 7. 构建镜像 =============
 echo "📦 开始构建固件..."
 echo "Packages: $PACKAGES"
 make image PROFILE="generic" PACKAGES="$PACKAGES" \
