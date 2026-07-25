@@ -37,17 +37,21 @@ while IFS= read -r url; do
   fi
 done <<< "$FB_APKS"
 echo "  ✅ feed-builder 包已下载 ($dl_count 个 .apk)"
-# 所有 feed-builder 编译的包
-CUSTOM_PACKAGES="$CUSTOM_PACKAGES nikki luci-app-nikki luci-i18n-nikki-zh-cn"
+# i18n 翻译包在官方仓库已有，删除本地的避免版本号编码冲突
+rm -f /home/build/immortalwrt/packages/luci-i18n-*.apk 2>/dev/null
+dl_clean=$(ls /home/build/immortalwrt/packages/*.apk 2>/dev/null | wc -l)
+echo "  ✅ 清理后保留 $dl_clean 个 .apk（排除 i18n 翻译包）"
+# 所有 feed-builder 编译的包（注：i18n 翻译包从官方仓库自动拉取，不放本地）
+CUSTOM_PACKAGES="$CUSTOM_PACKAGES nikki luci-app-nikki"
 CUSTOM_PACKAGES="$CUSTOM_PACKAGES mihomo-meta"
-CUSTOM_PACKAGES="$CUSTOM_PACKAGES momo luci-app-momo luci-i18n-momo-zh-cn"
-CUSTOM_PACKAGES="$CUSTOM_PACKAGES lucky luci-app-lucky luci-i18n-lucky-zh-cn"
-CUSTOM_PACKAGES="$CUSTOM_PACKAGES quickfile luci-app-quickfile luci-i18n-quickfile-zh-cn"
-CUSTOM_PACKAGES="$CUSTOM_PACKAGES mosdns luci-app-mosdns luci-i18n-mosdns-zh-cn v2dat"
+CUSTOM_PACKAGES="$CUSTOM_PACKAGES momo luci-app-momo"
+CUSTOM_PACKAGES="$CUSTOM_PACKAGES lucky luci-app-lucky"
+CUSTOM_PACKAGES="$CUSTOM_PACKAGES quickfile luci-app-quickfile"
+CUSTOM_PACKAGES="$CUSTOM_PACKAGES mosdns luci-app-mosdns v2dat"
 CUSTOM_PACKAGES="$CUSTOM_PACKAGES v2ray-geoip v2ray-geosite"
 CUSTOM_PACKAGES="$CUSTOM_PACKAGES luci-app-openclash"
-CUSTOM_PACKAGES="$CUSTOM_PACKAGES luci-app-frpc luci-i18n-frpc-zh-cn"
-CUSTOM_PACKAGES="$CUSTOM_PACKAGES luci-app-tailscale-community luci-i18n-tailscale-community-zh-cn"
+CUSTOM_PACKAGES="$CUSTOM_PACKAGES luci-app-frpc"
+CUSTOM_PACKAGES="$CUSTOM_PACKAGES luci-app-tailscale-community"
 CUSTOM_PACKAGES="$CUSTOM_PACKAGES tailscale"
 CUSTOM_PACKAGES="$CUSTOM_PACKAGES luci-theme-kucat"
 
