@@ -40,12 +40,19 @@ done
 if [ -n "$APK_BIN" ]; then
   echo "  找到 apk: $APK_BIN"
   cd /home/build/immortalwrt/packages
-  # 只对 x86_64 架构的 apk 建索引（避免混入 aarch64/i386 报错）
-  echo "  .apk count (all): $(ls *.apk 2>/dev/null | wc -l)"
-  echo "  .apk count (x86_64): $(ls *x86_64*.apk 2>/dev/null | wc -l)"
-  # 尝试 mkndx，只包含 x86_64 包
-  if ls *x86_64*.apk 2>/dev/null | head -1; then
-    $APK_BIN mkndx -o packages.adb *.apk 2>&1 && echo "  ✅ mkndx 成功" || echo "  ⚠️ mkndx 有错误"
+  echo "  .apk count: $(ls *.apk 2>/dev/null | wc -l)"
+  # apk mkndx 创建本地包索引
+  # --allow-untrusted: 第三方包无可信签名，跳过验证
+  if $APK_BIN mkndx -o packages.adb \
+    --rewrite-archives --allow-untrusted \
+    *.apk 2>&1; then
+    echo "  ✅ mkndx 成功"
+  else
+    echo "  ⚠️ mkndx 失败，尝试不指定 --allow-untrusted..."
+    # 部分 apk 版本不接受 --allow-untrusted，用环境变量代替
+    APK_NO_SIGNATURE_CHECK=1 $APK_BIN mkndx -o packages.adb *.apk 2>&1 && \
+      echo "  ✅ mkndx (env) 成功" || \
+      echo "  ⚠️ mkndx 均失败"
   fi
   ls -la packages.adb 2>/dev/null && echo "  packages.adb created" || echo "  packages.adb NOT created"
   cd /home/build/immortalwrt
