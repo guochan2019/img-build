@@ -82,25 +82,21 @@ else
   echo "⚠️ Tailscale 版本查询失败，使用官方仓库版本" >> $LOGFILE
 fi
 
-# ============= 4. 官方 ImmortalWrt 包列表 =============
+# ============= 4. 从 .config 提取所有包 =============
+# ImageBuilder 的 make image 不读取 CONFIG_PACKAGE_*=y，
+# 需要显式写入 PACKAGES= 变量。这里从 .config 自动提取。
+echo "🔄 从 .config 提取包列表..." >> $LOGFILE
 PACKAGES=""
-# 基础包
-PACKAGES="$PACKAGES curl"
-PACKAGES="$PACKAGES luci-i18n-diskman-zh-cn"
-PACKAGES="$PACKAGES luci-i18n-firewall-zh-cn"
-PACKAGES="$PACKAGES luci-theme-argon"
-PACKAGES="$PACKAGES luci-app-argon-config"
-PACKAGES="$PACKAGES luci-i18n-argon-config-zh-cn"
-PACKAGES="$PACKAGES luci-i18n-package-manager-zh-cn"
-PACKAGES="$PACKAGES luci-i18n-ttyd-zh-cn"
-PACKAGES="$PACKAGES openssh-sftp-server"
-PACKAGES="$PACKAGES luci-i18n-filemanager-zh-cn"
-# FRP（有自定义翻译覆盖）
-PACKAGES="$PACKAGES luci-i18n-frpc-zh-cn"
-# Tailscale（用自定义二进制覆盖官方包）
-PACKAGES="$PACKAGES tailscale"
-# 第三方包（由 apk-custom-packages.sh 下载预编译 .apk）
+while IFS='=' read -r line; do
+  pkg=${line#CONFIG_PACKAGE_}
+  pkg=${pkg%=y}
+  PACKAGES="$PACKAGES $pkg"
+done < <(grep '^CONFIG_PACKAGE_.*=y' /home/build/immortalwrt/.config)
+
+# 第三方包（由 apk-custom-packages.sh 下载预编译 .apk，放本地 packages/）
 PACKAGES="$PACKAGES $CUSTOM_PACKAGES"
+PKG_COUNT=$(echo "$PACKAGES" | wc -w)
+echo "📦 共 $PKG_COUNT 个包" >> $LOGFILE
 
 # ============= 5. 配置特殊包 =============
 # OpenClash 内核
