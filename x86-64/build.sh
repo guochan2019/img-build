@@ -32,11 +32,12 @@ echo "  packages/ 就绪: $(ls /home/build/immortalwrt/packages/*.apk 2>/dev/nul
 
 # ============= 4. frpc 翻译处理 =============
 echo "🔄 处理 frpc 翻译..."
-if command -v po2lmo &>/dev/null; then
+PO2LMO=$(find /home/build/immortalwrt/staging_dir/host -name po2lmo -type f 2>/dev/null | head -1)
+if [ -n "$PO2LMO" ]; then
   git clone --depth 1 https://github.com/immortalwrt/luci.git /tmp/luci-frpc 2>/dev/null || true
   if [ -f /tmp/luci-frpc/applications/luci-app-frpc/po/zh_Hans/frpc.po ]; then
     mkdir -p /home/build/immortalwrt/files/usr/lib/lua/luci/i18n
-    po2lmo /tmp/luci-frpc/applications/luci-app-frpc/po/zh_Hans/frpc.po \
+    $PO2LMO /tmp/luci-frpc/applications/luci-app-frpc/po/zh_Hans/frpc.po \
       /home/build/immortalwrt/files/usr/lib/lua/luci/i18n/frpc.zh-cn.lmo
     echo "  ✅ frpc 翻译已更新"
   fi
