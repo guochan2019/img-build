@@ -30,12 +30,33 @@ echo "  vmlinux-btf 占位包已创建"
 echo "🔄 下载第三方预编译包..." 
 source shell/apk-custom-packages.sh
 
-# ============= 3. 让 make image 自动建签名索引 =============
-# ImageBuilder 的 Makefile 在 make image 内部自动:
-#   1. _check_keys 生成本地签名密钥
-#   2. mkndx --keys-dir keys --sign keys/local-key.pem
-#         --allow-untrusted --output packages.adb *.apk
-# 参见 openwrt commit 578f266 (2024-10)
+# ============= 3. 生成本地签名密钥 + 创建签名 packages.adb =============
+# ImageBuilder 的内部 mkndx 输出被吞了（>/dev/null 2>/dev/null || true）
+# 我们在 build.sh 里手动建索引并签名
+echo "🔄 生成本地签名密钥..."
+APK_BIN=$(find /home/build/immortalwrt/staging_dir/host/bin -name apk -type f 2>/dev/null | head -1)
+mkdir -p /home/build/immortalwrt/keys
+OPENSSL=$(find /home/build/immortalwrt/staging_dir/host/bin -name openssl -type f 2>/dev/null | head -1)
+if [ -n "$OPENSSL" ] && [ ! -f /home/build/immortalwrt/keys/local-private-key.pem ]; then
+  $OPENSSL ecparam -genkey -name prime256v1 -out /home/build/immortalwrt/keys/local-private-key.pem
+  $OPENSSL ec -in /home/build/immortalwrt/keys/local-private-key.pem -pubout > /home/build/immortalwrt/keys/local-public-key.pem
+  # apk 要求公钥文件首行为 untrusted comment
+  sed -i '1s/^/untrusted comment: Local build key\n/' /home/build/immortalwrt/keys/local-public-key.pem 2>/dev/null || true
+  echo "  ✅ 密钥已生成"
+fi
+if [ -n "$APK_BIN" ] && [ -f /home/build/immortalwrt/keys/local-private-key.pem ]; then
+  echo "🔄 创建签名本地包索引..."
+  cd /home/build/immortalwrt/packages
+  $APK_BIN mkndx \
+    --keys-dir /home/build/immortalwrt/keys \
+    --sign /home/build/immortalwrt/keys/local-private-key.pem \
+    --allow-untrusted \
+    --output packages.adb \
+    --rewrite-archives \
+    *.apk 2>&1 && echo "  ✅ 签名索引已创建" || echo "  ⚠️ mkndx 失败"
+  ls -la packages.adb 2>/dev/null
+  cd /home/build/immortalwrt
+fi
 echo "  packages/ 就绪: $(ls /home/build/immortalwrt/packages/*.apk 2>/dev/null | wc -l) 个 .apk"
 
 # ============= 4. frpc 翻译处理 =============
