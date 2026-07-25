@@ -3,37 +3,43 @@ set -e
 
 # 第三方预编译包下载
 # 下载到 /home/build/immortalwrt/packages/ 目录
-# 同名包优先级：本地 packages/ > 官方仓库
+# 同名包优先级：本地 packages/ > 官方仓库（已设 repositories.conf）
 
 CUSTOM_PACKAGES=""
 mkdir -p /home/build/immortalwrt/packages
 
 # ---------- 辅助函数 ----------
-# 从 GitHub 下载单个文件，失败返回 1
 github_download() {
   local url="$1" out="$2"
   curl -fsSL --connect-timeout 10 -o "$out" "$url" 2>/dev/null
 }
 
-# ============= sbwml mosdns（含 v2ray-geodata）=============
-echo "🔄 下载 sbwml mosdns..."
-MOSDNS_URL="https://github.com/sbwml/luci-app-mosdns/releases/latest/download/x86_64-openwrt-25.12.tar.gz"
-if curl -fsSL --connect-timeout 10 -o /tmp/mosdns.tar.gz "$MOSDNS_URL"; then
-  mkdir -p /tmp/mosdns-pkgs
-  tar -zxf /tmp/mosdns.tar.gz -C /tmp/mosdns-pkgs/ 2>/dev/null || echo "⚠️ mosdns tar 解压失败"
-  if [ -d /tmp/mosdns-pkgs/packages_ci ]; then
-    cp /tmp/mosdns-pkgs/packages_ci/*.apk /home/build/immortalwrt/packages/
-    echo "✅ mosdns 预编译包已复制"
-    CUSTOM_PACKAGES="$CUSTOM_PACKAGES mosdns luci-app-mosdns luci-i18n-mosdns-zh-cn v2dat v2ray-geoip v2ray-geosite"
-  else
-    echo "⚠️ mosdns 压缩包中没有 packages_ci 目录"
-  fi
+# ============= 1. feed-builder 预编译包（Nikki/Momo/lucky/quickfile/mosdns/OpenClash等）=============
+echo "🔄 下载 feed-builder 预编译包..."
+FB_URL="https://github.com/guochan2019/feed-builder/releases/latest/download/feed-builder-x86_64.tar.gz"
+if curl -fsSL --connect-timeout 10 -o /tmp/feed-builder.tar.gz "$FB_URL"; then
+  tar -zxf /tmp/feed-builder.tar.gz -C /home/build/immortalwrt/packages/ 2>/dev/null || true
+  # 清理索引文件（非 .apk）
+  rm -f /home/build/immortalwrt/packages/packages.adb /home/build/immortalwrt/packages/index.json 2>/dev/null
+  fbc=$(ls /home/build/immortalwrt/packages/*.apk 2>/dev/null | wc -l)
+  echo "  ✅ feed-builder 包已下载 ($fbc 个 .apk)"
+  # 所有 feed-builder 编译的包
+  CUSTOM_PACKAGES="$CUSTOM_PACKAGES nikki luci-app-nikki luci-i18n-nikki-zh-cn"
+  CUSTOM_PACKAGES="$CUSTOM_PACKAGES mihomo-meta mihomo-alpha"
+  CUSTOM_PACKAGES="$CUSTOM_PACKAGES momo luci-app-momo luci-i18n-momo-zh-cn"
+  CUSTOM_PACKAGES="$CUSTOM_PACKAGES lucky luci-app-lucky luci-i18n-lucky-zh-cn"
+  CUSTOM_PACKAGES="$CUSTOM_PACKAGES quickfile luci-app-quickfile luci-i18n-quickfile-zh-cn"
+  CUSTOM_PACKAGES="$CUSTOM_PACKAGES mosdns luci-app-mosdns luci-i18n-mosdns-zh-cn v2dat"
+  CUSTOM_PACKAGES="$CUSTOM_PACKAGES v2ray-geoip v2ray-geosite"
+  CUSTOM_PACKAGES="$CUSTOM_PACKAGES luci-app-openclash"
+  CUSTOM_PACKAGES="$CUSTOM_PACKAGES luci-theme-kucat"
 else
-  echo "⚠️ mosdns 下载失败"
+  echo "  ⚠️ feed-builder 下载失败，跳过自定义 feed 包"
 fi
-# ============= QiuSimons daed =============
+
+# ============= 2. QiuSimons daed =============
 echo "🔄 下载 QiuSimons daed..."
-# API 获取最新 release 的 tag + x86_64 apk 下载地址
+# API 获取最新 release 的 x86_64 apk 下载地址
 DAED_URLS=$(curl -sf "https://api.github.com/repos/QiuSimons/luci-app-daed/releases/latest" 2>/dev/null | \
   python3 -c "
 import sys,json
@@ -71,7 +77,6 @@ if [ "$all_ok" = true ]; then
   CUSTOM_PACKAGES="$CUSTOM_PACKAGES daed luci-app-daed luci-i18n-daed-zh-cn"
   # 下载 vmlinux-btf（daed 依赖）
   echo "🔄 下载 vmlinux-btf（daed 依赖）..."
-  # 从 wukongdaily 仓库 API 获取最新 vmlinux-btf
   BTF_NAME=$(curl -sf "https://api.github.com/repos/wukongdaily/apk/contents/run/x86/daed" 2>/dev/null | \
     python3 -c "
 import sys,json
@@ -83,7 +88,6 @@ try:
 except: pass
 " 2>/dev/null | sort -V | tail -1 || true)
   if [ -z "$BTF_NAME" ]; then
-    # github API 限流，硬编码最后已知版本
     BTF_NAME="vmlinux-btf-6.12.79.apk"
   fi
   BTF_URL="https://raw.githubusercontent.com/wukongdaily/apk/master/run/x86/daed/$BTF_NAME"
@@ -94,31 +98,5 @@ except: pass
   fi
 fi
 
-# ============= vernesong OpenClash =============
-echo "🔄 下载 OpenClash..."
-OC_APK_URL=$(curl -sf "https://api.github.com/repos/vernesong/OpenClash/releases/latest" 2>/dev/null | \
-  python3 -c "
-import sys,json
-try:
-    d = json.load(sys.stdin)
-    for a in d.get('assets', []):
-        u = a.get('browser_download_url', '')
-        if u.endswith('.apk'):
-            print(u)
-            break
-except: pass
-" 2>/dev/null || true)
-if [ -z "$OC_APK_URL" ]; then
-  echo "  ⚠️ API 限流，跳过 OpenClash"
-else
-  fname=$(basename "$OC_APK_URL")
-  if github_download "$OC_APK_URL" "/home/build/immortalwrt/packages/$fname"; then
-    echo "  ✅ OpenClash 已下载"
-    CUSTOM_PACKAGES="$CUSTOM_PACKAGES luci-app-openclash"
-  else
-    echo "  ⚠️ OpenClash 下载失败"
-  fi
-fi
-
-# ============= 导出包列表 =============
+# ============= 3. 导出包列表 =============
 echo "CUSTOM_PACKAGES=$CUSTOM_PACKAGES"

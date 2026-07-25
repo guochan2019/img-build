@@ -64,12 +64,8 @@ fi
 # 过滤配置项别名和第三方 feed 包（不在官方仓库也不在本地 packages/ 的）
 echo "🔄 从 .config 提取包列表..."
 PACKAGES=""
-# 需要在 .config 中排除的包（非官方仓库，不在本地 packages/）
-EXCLUDE_PKGS="luci-app-lucky luci-i18n-lucky-zh-cn lucky \
-  luci-app-momo luci-i18n-momo-zh-cn momo \
-  luci-app-nikki luci-i18n-nikki-zh-cn nikki \
-  luci-app-quickfile luci-i18n-quickfile-zh-cn quickfile \
-  luci-theme-kucat mihomo-meta sing-box ariang"
+# 需要在 .config 中排除的包（feed-builder 已编译 + 官方 repo 有但无需显式加入）
+EXCLUDE_PKGS="sing-box"
 while IFS='=' read -r line; do
   pkg=${line#CONFIG_PACKAGE_}
   pkg=${pkg%=y}
