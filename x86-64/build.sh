@@ -9,54 +9,25 @@ set -e
 LOGFILE="/tmp/img-build-log.txt"
 echo "Starting img-build at $(date)" > $LOGFILE
 
-# ============= 1. vmlinux-btf 占位包 =============
-echo "🔄 创建 vmlinux-btf 占位包..." >> $LOGFILE
-mkdir -p /tmp/vmlinux-btf-pkg
-cat > /tmp/vmlinux-btf-pkg/.PKGINFO << 'PKGINFO'
-pkgname = vmlinux-btf
-pkgver = 1.0.0
-pkgdesc = "Dummy package - BTF is built into 25.12 kernel"
-url = ""
-packager = "img-build"
-size = 0
-architecture = all
-license = "GPL-2.0-only"
-PKGINFO
+# ============= 1. 确保 packages/ 目录存在 =============
 mkdir -p /home/build/immortalwrt/packages
-tar -czf /home/build/immortalwrt/packages/vmlinux-btf-1.0.0.apk \
-  -C /tmp/vmlinux-btf-pkg . 2>/dev/null && echo "✅ vmlinux-btf 占位包已创建" >> $LOGFILE
 
 # ============= 2. 第三方预编译包下载 =============
 echo "🔄 下载第三方预编译包..." 
 source shell/apk-custom-packages.sh
 
-# ============= 3. 构建本地包索引 =============
-# ============= 3. 构建本地包索引 =============
-# 用 ImageBuilder 自有 apk（在 staging_dir 下）重建 packages.adb
-echo "🔄 重建本地包索引..."
-APK_BIN=""
-for d in /home/build/immortalwrt/staging_dir/host/bin /home/build/immortalwrt/staging_dir/host/lib/apk/tools; do
-  [ -x "$d/apk" ] && APK_BIN="$d/apk" && break
-done
-if [ -n "$APK_BIN" ]; then
-  echo "  找到 apk: $APK_BIN"
-  cd /home/build/immortalwrt/packages
-  echo "  .apk count: $(ls *.apk 2>/dev/null | wc -l)"
-  # 验证所有 .apk 文件有效性（不创建索引）
-  # 然后删除 mkndx 结果，让 make image 自动用本地密钥签名重建
-  # 见 Issue #23154: ImageBuilder 自动生成签名后的 packages.adb
-  $APK_BIN mkndx \
-    --root /home/build/immortalwrt \
-    --keys-dir /home/build/immortalwrt \
-    --allow-untrusted \
-    --output /dev/null \
-    $(ls *.apk | grep -v vmlinux-btf) 2>&1 && echo "  ✅ .apk 包验证通过" || echo "  ⚠️ 部分包验证失败"
-  rm -f packages.adb
-  echo "  packages.adb 已删除，make image 将自动重建"
-  cd /home/build/immortalwrt
-else
-  echo "  ⚠️ 未找到 apk 二进制，跳过验证"
-fi
+# ============= 3. 清理占位包 + 让 make image 自动建签名索引 =============
+# ImageBuilder 的 Makefile 在 make image 内部自动:
+#   1. _check_keys 生成本地签名密钥 keys/local-private-key.pem
+#   2. mkndx --keys-dir keys --sign keys/local-key.pem
+#         --allow-untrusted --output packages.adb *.apk
+# 参见 openwrt commit 578f266 (2024-10):
+#   "imagebuilder: complete support for local signing keys"
+# 我们只需要确保 packages/ 下有有效 .apk 即可
+# 清理格式不标准的 vmlinux-btf 占位包（Makefile 的 mkndx 会用它）
+echo "🔄 清理占位包..."
+rm -f /home/build/immortalwrt/packages/vmlinux-btf-*.apk
+echo "  packages/ 就绪: $(ls /home/build/immortalwrt/packages/*.apk 2>/dev/null | wc -l) 个 .apk"
 
 # ============= 4. frpc 翻译处理 =============
 echo "🔄 处理 frpc 翻译..." >> $LOGFILE
@@ -138,17 +109,12 @@ if echo "$PACKAGES" | grep -q "luci-app-openclash"; then
   fi
 fi
 
-# 跳过本地仓库签名验证（第三方包无可信签名）
-# 从 .config 读取当前签名设置，用 DISABLE_SIGN_CHECK=1 覆盖
-export DISABLE_SIGN_CHECK=1
-
 # ============= 8. 构建镜像 =============
 echo "📦 开始构建固件..."
 echo "Packages: $PACKAGES"
 make image PROFILE="generic" PACKAGES="$PACKAGES" \
   FILES="/home/build/immortalwrt/files" \
-  ROOTFS_PARTSIZE=256 \
-  CONFIG_SIGNED_PACKAGES=n CONFIG_SIGNATURE_CHECK=n
+  ROOTFS_PARTSIZE=256
 
 if [ $? -ne 0 ]; then
   echo "❌ 构建失败!" >> $LOGFILE
