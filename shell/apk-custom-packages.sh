@@ -16,29 +16,40 @@ github_download() {
 
 # ============= 1. feed-builder 预编译包（Nikki/Momo/lucky/quickfile/mosdns/OpenClash等）=============
 echo "🔄 下载 feed-builder 预编译包..."
-FB_URL="https://github.com/guochan2019/feed-builder/releases/latest/download/feed-builder-x86_64.tar.gz"
-if curl -fsSL --connect-timeout 10 -o /tmp/feed-builder.tar.gz "$FB_URL"; then
-  tar -zxf /tmp/feed-builder.tar.gz -C /home/build/immortalwrt/packages/ 2>/dev/null || true
-  # 清理索引文件（非 .apk）
-  rm -f /home/build/immortalwrt/packages/packages.adb /home/build/immortalwrt/packages/index.json 2>/dev/null
-  fbc=$(ls /home/build/immortalwrt/packages/*.apk 2>/dev/null | wc -l)
-  echo "  ✅ feed-builder 包已下载 ($fbc 个 .apk)"
-  # 所有 feed-builder 编译的包
-  CUSTOM_PACKAGES="$CUSTOM_PACKAGES nikki luci-app-nikki luci-i18n-nikki-zh-cn"
-  CUSTOM_PACKAGES="$CUSTOM_PACKAGES mihomo-meta mihomo-alpha"
-  CUSTOM_PACKAGES="$CUSTOM_PACKAGES momo luci-app-momo luci-i18n-momo-zh-cn"
-  CUSTOM_PACKAGES="$CUSTOM_PACKAGES lucky luci-app-lucky luci-i18n-lucky-zh-cn"
-  CUSTOM_PACKAGES="$CUSTOM_PACKAGES quickfile luci-app-quickfile luci-i18n-quickfile-zh-cn"
-  CUSTOM_PACKAGES="$CUSTOM_PACKAGES mosdns luci-app-mosdns luci-i18n-mosdns-zh-cn v2dat"
-  CUSTOM_PACKAGES="$CUSTOM_PACKAGES v2ray-geoip v2ray-geosite"
-  CUSTOM_PACKAGES="$CUSTOM_PACKAGES luci-app-openclash"
-  CUSTOM_PACKAGES="$CUSTOM_PACKAGES luci-app-frpc luci-i18n-frpc-zh-cn"
-  CUSTOM_PACKAGES="$CUSTOM_PACKAGES luci-app-tailscale-community luci-i18n-tailscale-community-zh-cn"
-  CUSTOM_PACKAGES="$CUSTOM_PACKAGES tailscale"
-  CUSTOM_PACKAGES="$CUSTOM_PACKAGES luci-theme-kucat"
-else
-  echo "  ⚠️ feed-builder 下载失败，跳过自定义 feed 包"
-fi
+FB_RELEASE="https://github.com/guochan2019/feed-builder/releases/tag/Test"
+# 从 Test release 获取所有 .apk 下载链接
+FB_APKS=$(curl -sf "https://api.github.com/repos/guochan2019/feed-builder/releases/tags/Test" 2>/dev/null | \
+  python3 -c "
+import sys,json
+try:
+    d = json.load(sys.stdin)
+    for a in d.get('assets', []):
+        print(a.get('browser_download_url', ''))
+except: pass
+" 2>/dev/null || true)
+
+dl_count=0
+while IFS= read -r url; do
+  [ -z "$url" ] && continue
+  fname=$(basename "$url")
+  if curl -fsSL --connect-timeout 10 -o "/home/build/immortalwrt/packages/$fname" "$url" 2>/dev/null; then
+    dl_count=$((dl_count + 1))
+  fi
+done <<< "$FB_APKS"
+echo "  ✅ feed-builder 包已下载 ($dl_count 个 .apk)"
+# 所有 feed-builder 编译的包
+CUSTOM_PACKAGES="$CUSTOM_PACKAGES nikki luci-app-nikki luci-i18n-nikki-zh-cn"
+CUSTOM_PACKAGES="$CUSTOM_PACKAGES mihomo-meta mihomo-alpha"
+CUSTOM_PACKAGES="$CUSTOM_PACKAGES momo luci-app-momo luci-i18n-momo-zh-cn"
+CUSTOM_PACKAGES="$CUSTOM_PACKAGES lucky luci-app-lucky luci-i18n-lucky-zh-cn"
+CUSTOM_PACKAGES="$CUSTOM_PACKAGES quickfile luci-app-quickfile luci-i18n-quickfile-zh-cn"
+CUSTOM_PACKAGES="$CUSTOM_PACKAGES mosdns luci-app-mosdns luci-i18n-mosdns-zh-cn v2dat"
+CUSTOM_PACKAGES="$CUSTOM_PACKAGES v2ray-geoip v2ray-geosite"
+CUSTOM_PACKAGES="$CUSTOM_PACKAGES luci-app-openclash"
+CUSTOM_PACKAGES="$CUSTOM_PACKAGES luci-app-frpc luci-i18n-frpc-zh-cn"
+CUSTOM_PACKAGES="$CUSTOM_PACKAGES luci-app-tailscale-community luci-i18n-tailscale-community-zh-cn"
+CUSTOM_PACKAGES="$CUSTOM_PACKAGES tailscale"
+CUSTOM_PACKAGES="$CUSTOM_PACKAGES luci-theme-kucat"
 
 # ============= 2. QiuSimons daed =============
 echo "🔄 下载 QiuSimons daed..."
