@@ -33,10 +33,14 @@ tar -czf /home/build/immortalwrt/packages/vmlinux-btf-1.0.0.apk \
 echo "🔄 下载第三方预编译包..." >> $LOGFILE
 source shell/apk-custom-packages.sh
 
-# ============= 3. 本地 packages/ 整理 =============
+# ============= 3. 本地 packages/ 整理 + 重建索引 =============
 # apk-custom-packages.sh 已将 .apk 下载到 packages/
-# ImageBuilder 会自动从 packages/ 读取 .apk，无需额外注册
-echo "✅ 本地 packages/ 就绪: $(ls /home/build/immortalwrt/packages/*.apk 2>/dev/null | wc -l) 个 .apk" >> $LOGFILE
+# 但 ImageBuilder 的 repositories.conf 已指向 packages/，需要索引
+echo "🔄 重建本地包索引..." >> $LOGFILE
+cd /home/build/immortalwrt/packages
+apk index --output packages.adb --rewrite *.apk 2>&1 | head -3 >> $LOGFILE
+echo "✅ 本地 packages/ 就绪: $(ls *.apk 2>/dev/null | wc -l) 个 .apk" >> $LOGFILE
+cd /home/build/immortalwrt
 
 # ============= 4. frpc 翻译处理 =============
 echo "🔄 处理 frpc 翻译..." >> $LOGFILE
