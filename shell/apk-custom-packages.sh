@@ -9,15 +9,6 @@ CUSTOM_PACKAGES=""
 mkdir -p /home/build/immortalwrt/packages
 
 # ---------- 辅助函数 ----------
-# 从 GitHub API 获取最新 release 的下载地址
-# 参数: owner/repo  返回: 下载地址列表（每行一个）
-github_latest_assets() {
-  local repo="$1" data urls
-  data=$(curl -sf "https://api.github.com/repos/$repo/releases/latest" 2>/dev/null || true)
-  urls=$(echo "$data" | grep '"browser_download_url"' | cut -d'"' -f4)
-  echo "$urls"
-}
-
 # 从 GitHub 下载单个文件，失败返回 1
 github_download() {
   local url="$1" out="$2"
@@ -42,34 +33,62 @@ else
 fi
 # ============= QiuSimons daed =============
 echo "🔄 下载 QiuSimons daed..."
-# 直接硬编码已知版本下载（非 API，不限流）
-DAED_TAG="daed_2026.07.17-r1"
-DAED_BASE="https://github.com/QiuSimons/luci-app-daed/releases/download/$DAED_TAG"
-DAED_FILES="daed-2026.07.17-r1-x86_64-openwrt-25.12.apk luci-app-daed-1.4-r1-openwrt-25.12.apk luci-i18n-daed-zh-cn-25.283.11553.bce4b5f-openwrt-25.12.apk"
+# API 获取最新 release 的 tag + x86_64 apk 下载地址
+DAED_URLS=$(curl -sf "https://api.github.com/repos/QiuSimons/luci-app-daed/releases/latest" 2>/dev/null | \
+  python3 -c "
+import sys,json
+try:
+    d = json.load(sys.stdin)
+    for a in d.get('assets', []):
+        u = a.get('browser_download_url', '')
+        if 'x86_64-openwrt-25.12.apk' in u:
+            print(u)
+except: pass
+" 2>/dev/null || true)
+
+if [ -z "$DAED_URLS" ]; then
+  # API 限流，硬编码 tag 和文件
+  DAED_TAG="daed_2026.07.17-r1"
+  DAED_URLS="https://github.com/QiuSimons/luci-app-daed/releases/download/$DAED_TAG/daed-2026.07.17-r1-x86_64-openwrt-25.12.apk
+https://github.com/QiuSimons/luci-app-daed/releases/download/$DAED_TAG/luci-app-daed-1.4-r1-openwrt-25.12.apk
+https://github.com/QiuSimons/luci-app-daed/releases/download/$DAED_TAG/luci-i18n-daed-zh-cn-25.283.11553.bce4b5f-openwrt-25.12.apk"
+fi
+
 all_ok=true
-for f in $DAED_FILES; do
-  # 重命名去掉架构后缀，使文件名匹配 {pkgname}-{pkgver}.apk
-  target=$(echo "$f" | sed 's/-x86_64-openwrt-25\.[0-9]\+\(\.[0-9]\+\)\?//')
-  if github_download "$DAED_BASE/$f" "/home/build/immortalwrt/packages/$target"; then
-    echo "  ✅ $f 已下载"
+while IFS= read -r url; do
+  [ -z "$url" ] && continue
+  fname=$(basename "$url")
+  target=$(echo "$fname" | sed 's/-x86_64-openwrt-25\.[0-9]\+\(\.[0-9]\+\)\?//')
+  if github_download "$url" "/home/build/immortalwrt/packages/$target"; then
+    echo "  ✅ $fname 已下载"
   else
-    echo "  ⚠️ $f 下载失败"
+    echo "  ⚠️ $fname 下载失败"
     all_ok=false
   fi
-done
+done <<< "$DAED_URLS"
 
 if [ "$all_ok" = true ]; then
   CUSTOM_PACKAGES="$CUSTOM_PACKAGES daed luci-app-daed luci-i18n-daed-zh-cn"
-  # 下载 vmlinux-btf（daed 依赖），从 wukongdaily 仓库获取最新版本
+  # 下载 vmlinux-btf（daed 依赖）
   echo "🔄 下载 vmlinux-btf（daed 依赖）..."
-  BTF_URL=""
-  for ver in $(curl -sf "https://api.github.com/repos/wukongdaily/apk/contents/run/x86/daed" 2>/dev/null | grep -o '"name":"[^"]*vmlinux-btf[^"]*"' | cut -d'"' -f4 | sort -V); do
-    BTF_URL="https://raw.githubusercontent.com/wukongdaily/apk/master/run/x86/daed/$ver"
-  done
-  if [ -z "$BTF_URL" ]; then
-    echo "  ⚠️ wukongdaily API 获取失败，跳过 vmlinux-btf 下载"
-  elif github_download "$BTF_URL" "/home/build/immortalwrt/packages/$(basename $BTF_URL)"; then
-    echo "  ✅ 已下载: $(basename $BTF_URL)"
+  # 从 wukongdaily 仓库 API 获取最新 vmlinux-btf
+  BTF_NAME=$(curl -sf "https://api.github.com/repos/wukongdaily/apk/contents/run/x86/daed" 2>/dev/null | \
+    python3 -c "
+import sys,json
+try:
+    for item in json.load(sys.stdin):
+        n = item.get('name', '')
+        if 'vmlinux-btf' in n:
+            print(n)
+except: pass
+" 2>/dev/null | sort -V | tail -1 || true)
+  if [ -z "$BTF_NAME" ]; then
+    # github API 限流，硬编码最后已知版本
+    BTF_NAME="vmlinux-btf-6.12.79.apk"
+  fi
+  BTF_URL="https://raw.githubusercontent.com/wukongdaily/apk/master/run/x86/daed/$BTF_NAME"
+  if github_download "$BTF_URL" "/home/build/immortalwrt/packages/$BTF_NAME"; then
+    echo "  ✅ 已下载: $BTF_NAME"
   else
     echo "  ⚠️ vmlinux-btf 下载失败"
   fi
@@ -77,10 +96,20 @@ fi
 
 # ============= vernesong OpenClash =============
 echo "🔄 下载 OpenClash..."
-OC_ASSETS=$(github_latest_assets "vernesong/OpenClash")
-OC_APK_URL=$(echo "$OC_ASSETS" | grep -i '\.apk$' | head -1 || true)
+OC_APK_URL=$(curl -sf "https://api.github.com/repos/vernesong/OpenClash/releases/latest" 2>/dev/null | \
+  python3 -c "
+import sys,json
+try:
+    d = json.load(sys.stdin)
+    for a in d.get('assets', []):
+        u = a.get('browser_download_url', '')
+        if u.endswith('.apk'):
+            print(u)
+            break
+except: pass
+" 2>/dev/null || true)
 if [ -z "$OC_APK_URL" ]; then
-  echo "  ⚠️ API 获取失败，跳过 OpenClash"
+  echo "  ⚠️ API 限流，跳过 OpenClash"
 else
   fname=$(basename "$OC_APK_URL")
   if github_download "$OC_APK_URL" "/home/build/immortalwrt/packages/$fname"; then
