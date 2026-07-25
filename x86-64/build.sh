@@ -41,19 +41,14 @@ if [ -n "$APK_BIN" ]; then
   echo "  找到 apk: $APK_BIN"
   cd /home/build/immortalwrt/packages
   echo "  .apk count: $(ls *.apk 2>/dev/null | wc -l)"
-  # apk mkndx 创建本地包索引
-  # --allow-untrusted: 第三方包无可信签名，跳过验证
-  if $APK_BIN mkndx -o packages.adb \
-    --rewrite-archives --allow-untrusted \
-    *.apk 2>&1; then
-    echo "  ✅ mkndx 成功"
-  else
-    echo "  ⚠️ mkndx 失败，尝试不指定 --allow-untrusted..."
-    # 部分 apk 版本不接受 --allow-untrusted，用环境变量代替
-    APK_NO_SIGNATURE_CHECK=1 $APK_BIN mkndx -o packages.adb *.apk 2>&1 && \
-      echo "  ✅ mkndx (env) 成功" || \
-      echo "  ⚠️ mkndx 均失败"
-  fi
+  # 第三方包签名不可信，从 .apk 中剥离 .SIGN.* 文件
+  # .apk 是 gzip 压缩的 tar 包，去掉签名后 mkndx 不再验证
+  echo "  剥离签名..."
+  for apk in *.apk; do
+    gunzip -c "$apk" | tar --delete '.SIGN.*' 2>/dev/null | gzip > "$apk.unsigned" && \
+      mv "$apk.unsigned" "$apk"
+  done
+  $APK_BIN mkndx -o packages.adb *.apk 2>&1 && echo "  ✅ mkndx 成功" || echo "  ⚠️ mkndx 失败"
   ls -la packages.adb 2>/dev/null && echo "  packages.adb created" || echo "  packages.adb NOT created"
   cd /home/build/immortalwrt
 else
