@@ -40,32 +40,43 @@ if curl -fsSL --connect-timeout 10 -o /tmp/mosdns.tar.gz "$MOSDNS_URL"; then
 else
   echo "⚠️ mosdns 下载失败"
 fi
-
 # ============= QiuSimons daed =============
 echo "🔄 下载 QiuSimons daed..."
-DAED_REPO="QiuSimons/luci-app-daed"
-DAED_ASSETS=$(github_latest_assets "$DAED_REPO")
+# 方案：用 HTTP redirect 获取最新 release tag（不走 API，不限流）
+DAED_TAG=$(curl -sL -o /dev/null -w '%{url_effective}' \
+  "https://github.com/QiuSimons/luci-app-daed/releases/latest" 2>/dev/null | \
+  grep -o 'tag/[^/]*$' | cut -d/ -f2 || true)
 
-# 获取 x86_64 的 apk 下载地址（过滤 aarch64 和 i386）
-DAED_URLS=$(echo "$DAED_ASSETS" | grep -E 'x86_64-openwrt-25\\.12\\.apk' || true)
+if [ -z "$DAED_TAG" ]; then
+  # 兜底：最后已知可用版本
+  DAED_TAG="daed_2026.07.17-r1"
+fi
+
+DAED_BASE="https://github.com/QiuSimons/luci-app-daed/releases/download/$DAED_TAG"
+# 从 API 获取实际文件名列表（限流时从已知列表推断）
+DAED_FILES_RAW=$(curl -sf "https://api.github.com/repos/QiuSimons/luci-app-daed/releases/tags/$DAED_TAG" 2>/dev/null | \
+  grep -o '"name":"[^"]*x86_64-openwrt-25\.12\.apk"' | cut -d'"' -f4 || true)
+
 all_ok=true
-if [ -z "$DAED_URLS" ]; then
-  echo "  ⚠️ API 获取失败，跳过 daed 下载"
-  all_ok=false
+if [ -z "$DAED_FILES_RAW" ]; then
+  # 兜底文件列表
+  echo "  ⚠️ API 获取文件列表失败，使用已知文件名兜底"
+  DAED_FILES_RAW="daed-2026.07.17-r1-x86_64-openwrt-25.12.apk
+luci-app-daed-1.4-r1-openwrt-25.12.apk
+luci-i18n-daed-zh-cn-25.283.11553.bce4b5f-openwrt-25.12.apk"
 fi
-while IFS= read -r url; do
-[ -z "$url" ] && continue
-fname=$(basename "$url")
-# 重命名：去掉架构后缀使文件名匹配 {pkgname}-{pkgver}.apk 格式
-# 否则 mkndx 解析后 apk 安装时报 "package mentioned in index not found"
-target=$(echo "$fname" | sed 's/-x86_64-openwrt-25\.[0-9]\+\(\.[0-9]\+\)\?//')
-if github_download "$url" "/home/build/immortalwrt/packages/$target"; then
-  echo "  ✅ $fname 已下载"
-else
-  echo "  ⚠️ $fname 下载失败"
-  all_ok=false
-fi
-done <<< "$DAED_URLS"
+
+while IFS= read -r fname; do
+  [ -z "$fname" ] && continue
+  # 重命名：去掉架构后缀使文件名匹配 {pkgname}-{pkgver}.apk 格式
+  target=$(echo "$fname" | sed 's/-x86_64-openwrt-25\.[0-9]\+\(\.[0-9]\+\)\?//')
+  if github_download "$DAED_BASE/$fname" "/home/build/immortalwrt/packages/$target"; then
+    echo "  ✅ $fname 已下载"
+  else
+    echo "  ⚠️ $fname 下载失败"
+    all_ok=false
+  fi
+done <<< "$DAED_FILES_RAW"
 
 if [ "$all_ok" = true ]; then
   CUSTOM_PACKAGES="$CUSTOM_PACKAGES daed luci-app-daed luci-i18n-daed-zh-cn"
