@@ -19,52 +19,30 @@ source shell/apk-custom-packages.sh
 # ============= 3. packages/ 检查 + 生成索引 =============
 echo "  packages/: $(ls /home/build/immortalwrt/packages/*.apk 2>/dev/null | wc -l) 个 .apk"
 cd /home/build/immortalwrt/packages
-LOCAL_TAG_ENABLED=false
 if ls *.apk >/dev/null 2>&1; then
-  # 找 ImageBuilder 自带的 apk 二进制（staging_dir/host/bin/apk）
+  # 找 ImageBuilder 自带的 apk 二进制生成 .adb
   APK_BIN=$(find /home/build/immortalwrt/staging_dir -name apk -type f 2>/dev/null | head -1)
   if [ -n "$APK_BIN" ]; then
     if "$APK_BIN" mkndx --allow-untrusted --output packages.adb *.apk 2>/tmp/apk-mkndx-err.txt; then
       echo "  ✅ packages.adb 已生成"
     else
-      echo "  ⚠️ packages.adb 生成失败（详见 /tmp/apk-mkndx-err.txt）"
-    fi
-    cd /home/build/immortalwrt
-    if [ -f packages/packages.adb ]; then
-      sed -i '1i @local /home/build/immortalwrt/packages/packages.adb' \
-        /home/build/immortalwrt/repositories 2>/dev/null || true
-      echo "  ✅ @local 仓库已注册"
-      LOCAL_TAG_ENABLED=true
+      echo "  ⚠️ packages.adb 生成失败"
     fi
   else
-    cd /home/build/immortalwrt
-    echo "  ⚠️ 找不到 apk 二进制，ImageBuilder 内置机制兜底"
+    echo "  ⚠️ 找不到 apk 二进制"
   fi
 else
-  cd /home/build/immortalwrt
-  echo "  ⚠️ 无 .apk 文件，跳过本地仓库注册"
+  echo "  ⚠️ 无 .apk 文件"
 fi
+cd /home/build/immortalwrt
+# 注：ImageBuilder 的 package_install 用 --repositories-file /dev/zero，
+# 所以 @local tag 不生效。APK 按版本号高低自动选包。
+# 如果本地包版本 >= 官方版本，自动被选中。
 
 # ============= 4. NAS 菜单翻译 "存储" =============
-echo "🔄 编译 NAS → 存储 翻译..."
-PO2LMO=$(find /home/build/immortalwrt/staging_dir /usr/bin -name po2lmo -type f 2>/dev/null | head -1)
-if [ -n "$PO2LMO" ]; then
-  mkdir -p files/usr/lib/lua/luci/i18n
-  cat > /tmp/nas.po << 'POEOF'
-msgid ""
-msgstr ""
-"Language: zh_Hans\n"
-"Content-Type: text/plain; charset=UTF-8\n"
-
-msgid "NAS"
-msgstr "存储"
-POEOF
-  "$PO2LMO" /tmp/nas.po /home/build/immortalwrt/files/usr/lib/lua/luci/i18n/base.zh-cn.lmo 2>/dev/null && \
-    echo "  ✅ NAS → 存储 翻译已注入" || \
-    echo "  ⚠️ po2lmo 编译失败"
-else
-  echo "  ⚠️ 找不到 po2lmo，跳过"
-fi
+# .lmo 已预编译到 files/usr/lib/lua/luci/i18n/base.zh-cn.lmo
+# 由 FILES 参数注入覆盖官方文件
+echo "  ✅ NAS → 存储 翻译文件已就绪（files/ 注入）"
 # frpc 翻译已由 apk-custom-packages.sh 在 .apk 内 patch
 # ============= 5. 从 .config 提取所有包 =============
 # 过滤配置项别名和第三方 feed 包（不在官方仓库也不在本地 packages/ 的）
@@ -87,23 +65,11 @@ while IFS='=' read -r line; do
   PACKAGES="$PACKAGES $pkg"
 done < <(grep '^CONFIG_PACKAGE_.*=y' /home/build/immortalwrt/.config)
 
-# 第三方包（已在本地 packages/ 中的）
+# 第三方包（已在本地 packages/ 中的）由 ImageBuilder 内置 --repository 可见
+# APK 按版本号自动选最高版本，不额外添加 @local tag
 PACKAGES="$PACKAGES $CUSTOM_PACKAGES"
 PKG_COUNT=$(echo "$PACKAGES" | wc -w)
 echo "📦 共 $PKG_COUNT 个包"
-
-# 对 daed/openclash 加 @local tag，强制只从本地源安装
-if [ "$LOCAL_TAG_ENABLED" = "true" ]; then
-  # (^| )/( |$) 锚定防误匹配 hyphen 子串
-  PACKAGES=$(echo "$PACKAGES" | sed -E \
-    -e 's/(^| )daed( |$)/\1daed@local\2/g' \
-    -e 's/(^| )luci-app-daed( |$)/\1luci-app-daed@local\2/g' \
-    -e 's/(^| )luci-i18n-daed-zh-cn( |$)/\1luci-i18n-daed-zh-cn@local\2/g' \
-    -e 's/(^| )luci-app-openclash( |$)/\1luci-app-openclash@local\2/g')
-  echo "  ✅ daed/openclash 已锁定本地源"
-else
-  echo "  ⚠️ @local 不可用，daed/openclash 从所有源安装（最高版本胜出）"
-fi
 
 # ============= 6. 配置特殊包 =============
 # OpenClash 内核
