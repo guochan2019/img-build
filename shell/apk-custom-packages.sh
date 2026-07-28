@@ -75,11 +75,23 @@ fi
 
 # ============= 4. frpc 翻译修复 =============
 # 官方源的 luci-i18n-frpc-zh-cn 显示"frp 客户端"，
-# wrt-build diy-part2.sh 在编译时 patched .po 为"Frp 客户端"，
-# 但 frpc 不在 8 个第三方 feed 中，Collect 步骤收不到。
-# 解法：直接 patch .apk 中的 .lmo 二进制文件
+# 如果本地没有（不在第三方 8 feed 中），从官方源下载后 patch
 echo "🔄 修复 frpc 翻译..."
 FRPC_APK=$(ls /home/build/immortalwrt/packages/luci-i18n-frpc-zh-cn*.apk 2>/dev/null | head -1)
+if [ -z "$FRPC_APK" ]; then
+  # 从 ImmortalWrt 25.12.1 官方源下载
+  FRPC_URL=$(curl -sfL "https://downloads.immortalwrt.org/releases/25.12.1/packages/x86_64/luci/" 2>/dev/null | \
+    grep -o 'luci-i18n-frpc-zh-cn[^"]*\.apk' | head -1)
+  if [ -n "$FRPC_URL" ]; then
+    FRPC_APK="/home/build/immortalwrt/packages/$FRPC_URL"
+    curl -fsSL --connect-timeout 10 -o "$FRPC_APK" \
+      "https://downloads.immortalwrt.org/releases/25.12.1/packages/x86_64/luci/$FRPC_URL" 2>/dev/null && \
+      echo "  ✅ 已下载官方 luci-i18n-frpc-zh-cn.apk" || \
+      echo "  ⚠️ 官方 frpc 下载失败"
+  fi
+  # 再次检查
+  FRPC_APK=$(ls /home/build/immortalwrt/packages/luci-i18n-frpc-zh-cn*.apk 2>/dev/null | head -1)
+fi
 if [ -n "$FRPC_APK" ]; then
   # APK 是 tar.gz 格式，解包 → patch .lmo → 重新打包
   WORKDIR=$(mktemp -d)
