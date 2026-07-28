@@ -93,23 +93,26 @@ if [ -z "$FRPC_APK" ]; then
   FRPC_APK=$(ls /home/build/immortalwrt/packages/luci-i18n-frpc-zh-cn*.apk 2>/dev/null | head -1)
 fi
 if [ -n "$FRPC_APK" ]; then
-  # APK 是 tar.gz 格式，解包 → patch .lmo → 重新打包
-  WORKDIR=$(mktemp -d)
-  tar -xzf "$FRPC_APK" -C "$WORKDIR" 2>/dev/null
-  LMO_FILE=$(find "$WORKDIR" -name 'frpc.zh-cn.lmo' -type f 2>/dev/null | head -1)
-  if [ -n "$LMO_FILE" ]; then
-    # "frp 客户端" 和 "Frp 客户端" UTF-8 字节数相同（13 字节），直接 sed 替换安全
-    sed -i 's/frp 客户端/Frp 客户端/g' "$LMO_FILE"
-    # 重新打包为 APK（保留 .PKGINFO .apk-receipt 等元数据）
-    rm -f "$FRPC_APK"
-    cd "$WORKDIR"
-    tar -czf "$FRPC_APK" . 2>/dev/null
-    cd /home/build/immortalwrt
-    echo "  ✅ frpc 翻译已修复: frp 客户端 → Frp 客户端"
+  # 用 ImageBuilder 自带的 apk 解包（支持 ADBd 新格式）
+  APK_BIN=$(find /home/build/immortalwrt/staging_dir -name apk -type f 2>/dev/null | head -1)
+  if [ -n "$APK_BIN" ]; then
+    WORKDIR=$(mktemp -d)
+    "$APK_BIN" extract --root "$WORKDIR" "$FRPC_APK" 2>/dev/null || \
+      tar -xzf "$FRPC_APK" -C "$WORKDIR" 2>/dev/null || true
+    LMO_FILE=$(find "$WORKDIR" -name 'frpc.zh-cn.lmo' -type f 2>/dev/null | head -1)
+    if [ -n "$LMO_FILE" ]; then
+      sed -i 's/frp 客户端/Frp 客户端/g' "$LMO_FILE"
+      # 直接放到 files/ 目录，通过 FILES 注入覆盖官方包
+      mkdir -p /home/build/immortalwrt/files/usr/lib/lua/luci/i18n
+      cp "$LMO_FILE" /home/build/immortalwrt/files/usr/lib/lua/luci/i18n/frpc.zh-cn.lmo
+      echo "  ✅ frpc 翻译已修复: frp 客户端 → Frp 客户端（files/ 注入）"
+    else
+      echo "  ⚠️ 未找到 frpc.zh-cn.lmo"
+    fi
+    rm -rf "$WORKDIR"
   else
-    echo "  ⚠️ 未找到 frpc.zh-cn.lmo"
+    echo "  ⚠️ 找不到 apk 二进制，跳过 frpc 修复"
   fi
-  rm -rf "$WORKDIR"
 else
   echo "  ⚠️ 未找到 luci-i18n-frpc-zh-cn.apk，跳过"
 fi
