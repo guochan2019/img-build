@@ -16,14 +16,25 @@ mkdir -p /home/build/immortalwrt/packages
 echo "🔄 下载第三方预编译包..." 
 source shell/apk-custom-packages.sh
 
-# ============= 3. packages/ 检查 =============
-# .apk 已由 apk-custom-packages.sh 下载到 packages/
-# 不创建自定义索引，ImageBuilder 自动处理
+# ============= 3. packages/ 检查 + 生成索引 =============
 echo "  packages/: $(ls /home/build/immortalwrt/packages/*.apk 2>/dev/null | wc -l) 个 .apk"
-# 本地源首行加 @local tag，apk v3 原生支持仓库标签（repository pinning）
-# PACKAGES 中用 daed@local 强制只从 tagged 源安装，完全跳过官方 repo
-sed -i '1i @local /home/build/immortalwrt/packages/packages.adb' \
-  /home/build/immortalwrt/repositories 2>/dev/null || true
+# 手动生成 .adb，确保 APK 读到 repositories 时文件已存在
+cd /home/build/immortalwrt/packages
+if ls *.apk >/dev/null 2>&1; then
+  apk mkndx --allow-untrusted --output packages.adb *.apk 2>/dev/null && \
+    echo "  ✅ packages.adb 已生成" || \
+    echo "  ⚠️ packages.adb 生成失败"
+  cd /home/build/immortalwrt
+  # 确认 .adb 存在后再插入 repositories
+  if [ -f packages/packages.adb ]; then
+    sed -i '1i @local /home/build/immortalwrt/packages/packages.adb' \
+      /home/build/immortalwrt/repositories 2>/dev/null || true
+    echo "  ✅ @local 仓库已注册"
+  fi
+else
+  cd /home/build/immortalwrt
+  echo "  ⚠️ 无 .apk 文件，跳过本地仓库注册"
+fi
 
 # ============= 4. frpc 翻译处理（feed-builder 已编译 patched .lmo）=============
 # frpc 的 .po 已在 feed-builder 编译前 patched: 'frp 客户端' → 'Frp 客户端'
