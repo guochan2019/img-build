@@ -36,9 +36,29 @@ else
   echo "  ⚠️ 无 .apk 文件，跳过本地仓库注册"
 fi
 
-# ============= 4. frpc 翻译处理（feed-builder 已编译 patched .lmo）=============
-# frpc 的 .po 已在 feed-builder 编译前 patched: 'frp 客户端' → 'Frp 客户端'
-# luci-app-frpc + luci-i18n-frpc-zh-cn 来自 feed-builder tar.gz
+# ============= 4. NAS 菜单翻译 "存储" =============
+# 一级菜单 "NAS" 在中文界面显示为 "存储"
+# 用 po2lmo 编译一个 patched .lmo，通过 FILES 注入覆盖
+echo "🔄 编译 NAS → 存储 翻译..."
+PO2LMO=$(find /home/build/immortalwrt/staging_dir -name po2lmo -type f 2>/dev/null | head -1)
+if [ -n "$PO2LMO" ]; then
+  mkdir -p files/usr/lib/lua/luci/i18n
+  cat > /tmp/nas.po << 'POEOF'
+msgid ""
+msgstr ""
+"Language: zh_Hans\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "NAS"
+msgstr "存储"
+POEOF
+  "$PO2LMO" /tmp/nas.po /home/build/immortalwrt/files/usr/lib/lua/luci/i18n/base.zh-cn.lmo 2>/dev/null && \
+    echo "  ✅ NAS → 存储 翻译已注入" || \
+    echo "  ⚠️ po2lmo 编译失败"
+else
+  echo "  ⚠️ 找不到 po2lmo，跳过"
+fi
+# frpc 翻译已由 apk-custom-packages.sh 在 .apk 内 patch
 # ============= 5. 从 .config 提取所有包 =============
 # 过滤配置项别名和第三方 feed 包（不在官方仓库也不在本地 packages/ 的）
 echo "🔄 从 .config 提取包列表..."
