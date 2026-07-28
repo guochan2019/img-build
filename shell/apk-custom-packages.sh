@@ -41,9 +41,6 @@ else
 fi
 
 # ============= 2. 文件名修复（ImageBuilder 25.12.x 校验）=============
-# ImageBuilder 25.12.x 要求 .apk 文件名与内部版本号一致
-# OpenWrt APK 内部版本用 ~ 分隔 commit hash（如 2022.12.15~47b8ee51-r4）
-# 但文件名可能用 . 替代了 ~，需修正
 cd /home/build/immortalwrt/packages
 for f in *.apk; do
   [ ! -f "$f" ] && continue
@@ -76,7 +73,36 @@ else
   echo "  ⚠️ vmlinux-btf 下载失败"
 fi
 
-# ============= 4. 包列表 =============
+# ============= 4. frpc 翻译修复 =============
+# 官方源的 luci-i18n-frpc-zh-cn 显示"frp 客户端"，
+# wrt-build diy-part2.sh 在编译时 patched .po 为"Frp 客户端"，
+# 但 frpc 不在 8 个第三方 feed 中，Collect 步骤收不到。
+# 解法：直接 patch .apk 中的 .lmo 二进制文件
+echo "🔄 修复 frpc 翻译..."
+FRPC_APK=$(ls /home/build/immortalwrt/packages/luci-i18n-frpc-zh-cn*.apk 2>/dev/null | head -1)
+if [ -n "$FRPC_APK" ]; then
+  # APK 是 tar.gz 格式，解包 → patch .lmo → 重新打包
+  WORKDIR=$(mktemp -d)
+  tar -xzf "$FRPC_APK" -C "$WORKDIR" 2>/dev/null
+  LMO_FILE=$(find "$WORKDIR" -name 'frpc.zh-cn.lmo' -type f 2>/dev/null | head -1)
+  if [ -n "$LMO_FILE" ]; then
+    # "frp 客户端" 和 "Frp 客户端" UTF-8 字节数相同（13 字节），直接 sed 替换安全
+    sed -i 's/frp 客户端/Frp 客户端/g' "$LMO_FILE"
+    # 重新打包为 APK（保留 .PKGINFO .apk-receipt 等元数据）
+    rm -f "$FRPC_APK"
+    cd "$WORKDIR"
+    tar -czf "$FRPC_APK" . 2>/dev/null
+    cd /home/build/immortalwrt
+    echo "  ✅ frpc 翻译已修复: frp 客户端 → Frp 客户端"
+  else
+    echo "  ⚠️ 未找到 frpc.zh-cn.lmo"
+  fi
+  rm -rf "$WORKDIR"
+else
+  echo "  ⚠️ 未找到 luci-i18n-frpc-zh-cn.apk，跳过"
+fi
+
+# ============= 5. 包列表 =============
 # wrt-build 已编译 8 个 feed 的全部包：
 #   daed: daed luci-app-daed luci-i18n-daed-zh-cn
 #   lucky: lucky luci-app-lucky luci-i18n-lucky-zh-cn
