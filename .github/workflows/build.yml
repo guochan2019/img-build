@@ -1,0 +1,54 @@
+name: Build ImmortalWrt via ImageBuilder
+
+on:
+  workflow_dispatch:
+    inputs:
+      custom_router_ip:
+        description: '路由器管理地址'
+        required: true
+        default: '192.168.50.5'
+      profile:
+        description: '固件大小 (MB)'
+        required: true
+        default: '512'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set permissions
+        run: chmod -R +x shell/ x86-64/
+
+      - name: Save router IP
+        run: |
+          mkdir -p files/etc/config
+          echo "${{ github.event.inputs.custom_router_ip }}" > files/etc/config/custom_router_ip.txt
+          echo "管理地址设为: ${{ inputs.custom_router_ip }}"
+
+      - name: Build via ImageBuilder
+        run: |
+          docker run --rm -i \
+            --user root \
+            -v "${{ github.workspace }}/bin:/home/build/immortalwrt/bin" \
+            -v "${{ github.workspace }}/files:/home/build/immortalwrt/files" \
+            -v "${{ github.workspace }}/x86-64/imm25.config:/home/build/immortalwrt/.config" \
+            -v "${{ github.workspace }}/shell:/home/build/immortalwrt/shell" \
+            -v "${{ github.workspace }}/x86-64/build.sh:/home/build/immortalwrt/build.sh" \
+            -e ROOTFS_PARTSIZE="${{ github.event.inputs.profile }}" \
+            immortalwrt/imagebuilder:x86-64-openwrt-25.12.1 \
+            /bin/bash /home/build/immortalwrt/build.sh
+
+      - name: Upload firmware
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ImmortalWrt-ImageBuilder
+          files: |
+            ${{ github.workspace }}/bin/targets/x86/64/*squashfs-combined-efi*
+            ${{ github.workspace }}/bin/targets/x86/64/*squashfs-rootfs*
+          token: ${{ secrets.GITHUB_TOKEN }}

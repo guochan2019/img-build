@@ -1,0 +1,6 @@
+# Put your custom commands here that should be executed once
+# the system init finished. By default this file does nothing.
+
+ln -s /usr/share/v2ray/*.* /etc/nikki/run/
+
+exit 0
