@@ -4,7 +4,7 @@
 
 无需从源码编译，下载预编译包直接组装固件，**5~10 分钟**完成一次构建。
 
-> 🟢 **构建通过** — 2026-07-28 成功产出 `combined-efi.img`（512MB）和 `rootfs.img`
+> 🟢 **构建通过** — 2026-07-28
 
 ---
 
@@ -22,8 +22,8 @@
 
 - [x] 默认 IP **192.168.50.5**，无密码登录
 - [x] 固件大小 **512MB**
-- [x] **frpc** 中文翻译已修复
-- [x] **NAS** → **存储** 菜单中文（lmo-edit.py 注入）
+- [x] frpc 中文翻译
+- [x] NAS 菜单中文
 - [x] **daed** + luci-app-daed（1.4 稳定版）
 - [x] **mosdns** + luci-app-mosdns
 - [x] **Tailscale** + luci-app-tailscale-community
@@ -68,8 +68,8 @@ img-build/
 │   ├── build.sh                       # 构建脚本
 │   └── imm25.config                   # 编译配置
 ├── shell/
-│   ├── apk-custom-packages.sh         # 预编译包下载 + 翻译修正
-│   └── lmo-edit.py                    # .lmo 翻译条目注入工具
+│   ├── apk-custom-packages.sh         # 预编译包下载
+│   └── lmo-edit.py                    # 翻译注入工具
 ├── files/
 │   └── etc/
 │       ├── uci-defaults/99-custom.sh  # 首次启动初始化
@@ -83,8 +83,8 @@ img-build/
 |---|------|
 | 所有 feed 包 | [guochan2019/wrt-build](https://github.com/guochan2019/wrt-build) Release |
 | vmlinux-btf（daed 依赖） | [wukongdaily/apk](https://github.com/wukongdaily/apk) |
-|| luci-i18n-frpc-zh-cn | ImmortalWrt 官方源（`sed -i` 修复） |
-|| base.zh-cn.lmo | ImmortalWrt 官方源（`lmo-edit.py` 追加 NAS→存储） |
+| luci-i18n-frpc-zh-cn | ImmortalWrt 官方源 |
+| base.zh-cn.lmo | ImmortalWrt 官方源 |
 
 ## CI 工作流
 
