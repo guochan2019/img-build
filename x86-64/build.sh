@@ -16,28 +16,14 @@ mkdir -p /home/build/immortalwrt/packages
 echo "🔄 下载第三方预编译包..." 
 source shell/apk-custom-packages.sh
 
-# ============= 3. packages/ 检查 + 生成索引 =============
+# ============= 3. packages/ 检查 =============
 echo "  packages/: $(ls /home/build/immortalwrt/packages/*.apk 2>/dev/null | wc -l) 个 .apk"
-cd /home/build/immortalwrt/packages
-if ls *.apk >/dev/null 2>&1; then
-  # 找 ImageBuilder 自带的 apk 二进制生成 .adb
-  APK_BIN=$(find /home/build/immortalwrt/staging_dir -name apk -type f 2>/dev/null | head -1)
-  if [ -n "$APK_BIN" ]; then
-    if "$APK_BIN" mkndx --allow-untrusted --output packages.adb *.apk 2>/tmp/apk-mkndx-err.txt; then
-      echo "  ✅ packages.adb 已生成"
-    else
-      echo "  ⚠️ packages.adb 生成失败"
-    fi
-  else
-    echo "  ⚠️ 找不到 apk 二进制"
-  fi
-else
-  echo "  ⚠️ 无 .apk 文件"
-fi
-cd /home/build/immortalwrt
-# 注：ImageBuilder 的 package_install 用 --repositories-file /dev/zero，
-# 所以 @local tag 不生效。APK 按版本号高低自动选包。
-# 如果本地包版本 >= 官方版本，自动被选中。
+# 删除可能存在的 .adb，强制 ImageBuilder 的 package_reload 重新生成
+# （ImageBuilder 自带的 $(APK) 二进制比我们 find 到的更准确）
+rm -f /home/build/immortalwrt/packages/packages.adb
+echo "  ✅ 清空 .adb，由 ImageBuilder 自动生成"
+# 注：ImageBuilder package_install 用 --repository packages/packages.adb，
+# package_reload 会在 mkndx 之后自动找到 .apk 并生成兼容的 .adb
 
 # ============= 4. NAS 菜单翻译 "存储" =============
 # .lmo 已预编译到 files/usr/lib/lua/luci/i18n/base.zh-cn.lmo
