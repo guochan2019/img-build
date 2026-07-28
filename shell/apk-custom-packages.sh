@@ -93,14 +93,14 @@ if [ -z "$FRPC_APK" ]; then
   FRPC_APK=$(ls /home/build/immortalwrt/packages/luci-i18n-frpc-zh-cn*.apk 2>/dev/null | head -1)
 fi
 if [ -n "$FRPC_APK" ]; then
-  # 用 ImageBuilder 自带的 apk 安装到临时根目录，再提取 .lmo
-  # (ADBd 新格式不能用 tar 解包)
+  # 用 ImageBuilder 自带的 apk extract 解包（支持 ADBd 新格式）
   APK_BIN=$(find /home/build/immortalwrt/staging_dir -name apk -type f 2>/dev/null | head -1)
   if [ -n "$APK_BIN" ]; then
-    TMPROOT=$(mktemp -d)
-    mkdir -p "$TMPROOT/tmp"
-    "$APK_BIN" --root "$TMPROOT" --initdb add --allow-untrusted "$FRPC_APK" 2>/dev/null || true
-    LMO_FILE=$(find "$TMPROOT" -name 'frpc.zh-cn.lmo' -type f 2>/dev/null | head -1)
+    TMPDIR=$(mktemp -d)
+    cd "$TMPDIR"
+    "$APK_BIN" extract --allow-untrusted "$FRPC_APK" 2>/dev/null || true
+    cd /home/build/immortalwrt
+    LMO_FILE=$(find "$TMPDIR" -name 'frpc.zh-cn.lmo' -type f 2>/dev/null | head -1)
     if [ -n "$LMO_FILE" ]; then
       sed -i 's/frp 客户端/Frp 客户端/g' "$LMO_FILE"
       mkdir -p /home/build/immortalwrt/files/usr/lib/lua/luci/i18n
@@ -109,7 +109,7 @@ if [ -n "$FRPC_APK" ]; then
     else
       echo "  ⚠️ 未找到 frpc.zh-cn.lmo"
     fi
-    rm -rf "$TMPROOT"
+    rm -rf "$TMPDIR"
   else
     echo "  ⚠️ 找不到 apk 二进制，跳过 frpc 修复"
   fi
