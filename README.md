@@ -25,6 +25,7 @@
 - [x] frpc 中文翻译
 - [x] NAS 菜单中文
 - [x] **daed** + luci-app-daed（1.4 稳定版）
+- [x] daed geoip/geosite 自动修复（软链接到 v2ray 数据）
 - [x] **mosdns** + luci-app-mosdns
 - [x] **Tailscale** + luci-app-tailscale-community
 - [x] **lucky / mihomo-meta / momo / nikki / quickfile**
@@ -91,6 +92,7 @@ img-build/
 - **触发方式**：手动触发（`workflow_dispatch`）
 - **构建容器**：`immortalwrt/imagebuilder:x86-64-openwrt-25.12.1`
 - **产出**：`immortalwrt-x86-64-generic-squashfs-combined-efi.img` + `rootfs.img`
+- **Release 保留**：每次构建创建独立 Release（`ImmortalWrt-<run>`），自动保留最新 2 个
 
 ## 鸣谢
 
