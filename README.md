@@ -54,7 +54,7 @@ docker run --rm -i \
   -v "$(pwd)/x86-64/imm25.config:/home/build/immortalwrt/.config" \
   -v "$(pwd)/shell:/home/build/immortalwrt/shell" \
   -v "$(pwd)/x86-64/build.sh:/home/build/immortalwrt/build.sh" \
-  immortalwrt/imagebuilder:x86-64-openwrt-25.12.1 \
+  immortalwrt/imagebuilder:x86-64-openwrt-25.12 \
   /bin/bash /home/build/immortalwrt/build.sh
 
 # 固件输出到 bin/targets/x86/64/
@@ -90,7 +90,7 @@ img-build/
 ## CI 工作流
 
 - **触发方式**：手动触发（`workflow_dispatch`）
-- **构建容器**：`immortalwrt/imagebuilder:x86-64-openwrt-25.12.1`
+- **构建容器**：`immortalwrt/imagebuilder:x86-64-openwrt-25.12`
 - **产出**：`immortalwrt-x86-64-generic-squashfs-combined-efi.img` + `rootfs.img`
 - **Release 保留**：每次构建创建独立 Release（`ImmortalWrt-<run>`），自动保留最新 2 个
 
