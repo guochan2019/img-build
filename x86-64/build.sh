@@ -83,6 +83,17 @@ if [ -n "$TARGET_DIR" ] && [ -d "$TARGET_DIR" ] && [ -d "$TARGET_DIR/lib/apk/db"
       add "$pkg_apk" 2>&1 || echo "  ⚠️ 强制安装 $name 失败"
   done
   echo "  ✅ 自定义包已强制安装"
+
+  # daed 需要 geoip/geosite（v2ray-geoip 安装到 /usr/share/v2ray/，daed 需要 /usr/local/share/daed/）
+  mkdir -p "$TARGET_DIR/usr/local/share/daed"
+  if [ -f "$TARGET_DIR/usr/share/v2ray/geoip.dat" ]; then
+    ln -sf "../../share/v2ray/geoip.dat" "$TARGET_DIR/usr/local/share/daed/geoip.dat"
+    echo "    ✅ geoip.dat 软链接 → /usr/local/share/daed/"
+  fi
+  if [ -f "$TARGET_DIR/usr/share/v2ray/geosite.dat" ]; then
+    ln -sf "../../share/v2ray/geosite.dat" "$TARGET_DIR/usr/local/share/daed/geosite.dat"
+    echo "    ✅ geosite.dat 软链接 → /usr/local/share/daed/"
+  fi
 else
   echo "  ⚠️ 找不到 APK 数据库，跳过强制安装"
 fi
