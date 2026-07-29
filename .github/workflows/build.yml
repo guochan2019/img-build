@@ -44,10 +44,31 @@ jobs:
             immortalwrt/imagebuilder:x86-64-openwrt-25.12.1 \
             /bin/bash /home/build/immortalwrt/build.sh
 
+      - name: Cleanup old releases (keep 2 latest)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🧹 清理旧 Release，保留最新 2 个..."
+          releases=$(gh release list --repo ${{ github.repository }} \
+            --json tagName --jq '.[].tagName' \
+            --order desc --limit 50 2>/dev/null | grep '^ImmortalWrt-' || true)
+          count=0
+          for tag in $releases; do
+            count=$((count+1))
+            if [ "$count" -gt 2 ]; then
+              echo "  删除: $tag"
+              gh release delete "$tag" --repo ${{ github.repository }} --yes 2>/dev/null || true
+              # 本地 tag 也要删，否则下次 gh release 会报 tag exists
+              git push origin --delete "$tag" 2>/dev/null || true
+            fi
+          done
+          echo " ✅ 清理完成"
+
       - name: Upload firmware
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ImmortalWrt-ImageBuilder
+          tag_name: ImmortalWrt-${{ github.run_number }}
+          name: "ImmortalWrt #${{ github.run_number }}"
           files: |
             ${{ github.workspace }}/bin/targets/x86/64/*squashfs-combined-efi*
             ${{ github.workspace }}/bin/targets/x86/64/*squashfs-rootfs*
