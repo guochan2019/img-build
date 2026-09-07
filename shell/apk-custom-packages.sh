@@ -13,7 +13,7 @@ github_download() {
   curl -fsSL --connect-timeout 10 -o "$out" "$url" 2>/dev/null
 }
 
-# ============= 1. wrt-build 预编译包（全部 8 个 feed）=============
+# ============= 1. wrt-build 预编译包（第三方 feed，mosdns/tailscale 已移除）=============
 echo "🔄 下载 wrt-build 预编译包..."
 TAR_URL=$(curl -sf \
   "https://api.github.com/repos/guochan2019/wrt-build/releases/latest" 2>/dev/null | \

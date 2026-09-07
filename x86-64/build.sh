@@ -71,7 +71,6 @@ if [ -n "$TARGET_DIR" ] && [ -d "$TARGET_DIR" ] && [ -d "$TARGET_DIR/lib/apk/db"
   for pkg_apk in /home/build/immortalwrt/packages/daed-*.apk \
                   /home/build/immortalwrt/packages/luci-app-daed-*.apk \
                   /home/build/immortalwrt/packages/luci-i18n-daed-zh-cn-*.apk \
-                  /home/build/immortalwrt/packages/tailscale-*.apk \
                   /home/build/immortalwrt/packages/v2ray-geoip-*.apk \
                   /home/build/immortalwrt/packages/v2ray-geosite-*.apk; do
     [ -f "$pkg_apk" ] || continue

@@ -26,8 +26,6 @@
 - [x] NAS 菜单中文
 - [x] **daed** + luci-app-daed（1.4 稳定版）
 - [x] daed geoip/geosite 自动修复（软链接到 v2ray 数据）
-- [x] **mosdns** + luci-app-mosdns
-- [x] **Tailscale** + luci-app-tailscale-community
 - [x] **lucky / mihomo-meta / momo / nikki / quickfile**
 - [x] **v2ray-geoip / v2ray-geosite**
 - [x] **Nikki** v2ray 数据软链接自动创建
