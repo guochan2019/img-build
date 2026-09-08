@@ -12,13 +12,12 @@ if [ -f "$CUSTOM_IP_FILE" ]; then
   CUSTOM_IP=$(cat "$CUSTOM_IP_FILE" | head -1)
   echo "📖 从 $CUSTOM_IP_FILE 读取 IP: $CUSTOM_IP" >> $LOGFILE
 else
-  CUSTOM_IP="192.168.50.5"
+  CUSTOM_IP="192.168.1.1"
   echo "⚠️ $CUSTOM_IP_FILE 不存在，使用默认 $CUSTOM_IP" >> $LOGFILE
 fi
 
 uci set network.lan.ipaddr="$CUSTOM_IP"
 uci set network.lan.netmask='255.255.255.0'
-uci set network.lan.gateway='192.168.50.1'
 uci set network.lan.dns='223.5.5.5 114.114.114.114'
 uci commit network
 echo "✅ IP 已设为 $CUSTOM_IP" >> $LOGFILE
